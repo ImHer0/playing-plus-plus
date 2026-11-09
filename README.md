@@ -2,6 +2,8 @@
 
 Release dates and clickable genres in Spotify’s now-playing bar.
 
+<img src="assets/preview.gif" alt="Playing++ preview across 20 songs" width="420">
+
 ![Playing++ showing FULL BLOOM by Rav](assets/now-playing.png)
 
 - Shows the release date beside the song title.

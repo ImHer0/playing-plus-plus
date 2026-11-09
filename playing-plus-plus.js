@@ -113,7 +113,7 @@
     if (!match && track?.name && track.artists?.length && track.duration_ms) {
       const quote = value => `"${value.replace(/[\\"]/g, "\\$&")}"`;
       const search = await musicbrainz(`recording?query=${encodeURIComponent(`recording:${quote(track.name)} AND artist:${quote(track.artists[0].name)}`)}&fmt=json&limit=25`);
-      const normalize = value => value.toLowerCase().normalize("NFKC").replace(/[’‘]/g, "'").trim();
+      const normalize = value => value.toLowerCase().normalize("NFKC").replace(/[\u2010-\u2015]/g, "-").replace(/[’‘]/g, "'").trim();
       const matches = (search.recordings || []).filter(r =>
         normalize(r.title) === normalize(track.name) &&
         Math.abs(r.length - track.duration_ms) <= 2000 &&
@@ -122,7 +122,7 @@
       candidates = matches;
       if (matches.length === 1) match = matches[0];
     }
-    const normalizeArtist = value => value.normalize("NFKC").toLowerCase().trim();
+    const normalizeArtist = value => value.normalize("NFKC").replace(/[\u2010-\u2015]/g, "-").toLowerCase().trim();
     const primary = track?.artists?.[0]?.name;
     const artistIds = (match ? [match] : candidates).map(r => r["artist-credit"]?.find(c =>
       primary && normalizeArtist(c.artist?.name || c.name || "") === normalizeArtist(primary)
@@ -140,7 +140,7 @@
     if (!artistId) {
       const quoted = `"${name.replace(/[\\"]/g, "\\$&")}"`;
       const search = await musicbrainz(`artist?query=${encodeURIComponent(`artist:${quoted}`)}&fmt=json&limit=10`);
-      const normalize = value => value.normalize("NFKC").toLowerCase().trim();
+      const normalize = value => value.normalize("NFKC").replace(/[\u2010-\u2015]/g, "-").toLowerCase().trim();
       const matches = (search.artists || []).filter(a => normalize(a.name) === normalize(name));
       // Namesakes are ambiguous; do not silently pick the highest search result.
       if (matches.length !== 1) return [];

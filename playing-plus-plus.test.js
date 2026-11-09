@@ -339,3 +339,18 @@ test("overflowing genres scroll on hover and reset to the ellipsis on leave", as
   label.onmouseenter();
   assert.equal(app.frames.size, 0);
 });
+
+
+test("Unicode hyphens in MusicBrainz artist names match Spotify credits", async () => {
+  const app = harness(() => Promise.resolve({ code: 403 }), async url => ({
+    ok: true, json: async () => url.includes("/artist?")
+      ? { artists: [{ id: "wu-tang", name: "Wu\u2010Tang Clan" }] }
+      : { genres: [{ name: "east coast hip hop", count: 3 }, { name: "hardcore hip hop", count: 2 }] }
+  }), "v2");
+  app.player.data = { item: { ...item("w"), name: "Protect Ya Neck", artists: [{ name: "Wu-Tang Clan" }], album: { release_date: "1993-11-09" } } };
+  app.change();
+  await new Promise(resolve => setTimeout(resolve, 1250));
+  assert.match(app.quality.text, /east coast hip hop/);
+  assert.match(app.panel.title, /MusicBrainz artist genres/);
+  assert.equal(app.genreLinks()[0].href, "/search/east%20coast%20hip%20hop/playlists");
+});

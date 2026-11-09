@@ -2,7 +2,7 @@
   {
     "name": "Playing++",
     "description": "Release dates and clickable genres in your now-playing bar, with independent toggles and hover scrolling.",
-    "preview": "assets/logo.png",
+    "preview": "assets/preview.gif",
     "main": "playing-plus-plus.js",
     "readme": "README.md",
     "tags": [
