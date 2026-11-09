@@ -2,7 +2,9 @@
 (() => {
   "use strict";
   const SETTINGS_KEY = "playing-plus-plus:settings";
-  const settings = { date: true, genres: true };
+  const settings = { date: true, genres: true, dateFormat: "long", customDateFormat: "DD/MM/YYYY" };
+  const dateFormats = [["long", "January 31, 2024"], ["short", "Jan 31, 2024"], ["dmy", "31/01/2024"], ["mdy", "01/31/2024"], ["iso", "2024-01-31"], ["custom", "Custom"]];
+  let lastState;
   const cache = new Map();
   let mbQueue = Promise.resolve();
   let generation = 0;
@@ -47,18 +49,29 @@
     return promise;
   }
 
-  function dateText(value) {
+  function dateText(value, format = settings.dateFormat, custom = settings.customDateFormat) {
     if (!value) return "Unavailable";
     const raw = typeof value === "object"
       ? [value.year, value.month, value.day].filter(v => v != null).map((v, i) => i ? String(v).padStart(2, "0") : String(v)).join("-")
       : String(value);
-    // Keep the supplied precision: a year is not January 1st.
     if (/^\d{4}$/.test(raw)) return raw;
     if (!/^\d{4}-\d{2}(-\d{2})?$/.test(raw)) return "Unavailable";
     const date = new Date(`${raw.length === 7 ? raw + "-01" : raw}T12:00:00Z`);
-    if (Number.isNaN(date.getTime())) return "Unavailable";
+    const [year, month, day] = raw.split("-").map(Number);
+    if (Number.isNaN(date.getTime()) || date.getUTCMonth() + 1 !== month || (day && date.getUTCDate() !== day)) return "Unavailable";
+    const hasDay = raw.length === 10;
+    // Never invent a day for month-only releases, even in custom formats.
+    if (!hasDay && format !== "long" && format !== "short") return raw;
+    if (format === "iso") return raw;
+    if (format === "dmy") return `${raw.slice(8)}/${raw.slice(5, 7)}/${raw.slice(0, 4)}`;
+    if (format === "mdy") return `${raw.slice(5, 7)}/${raw.slice(8)}/${raw.slice(0, 4)}`;
+    if (format === "custom") {
+      const monthName = style => new Intl.DateTimeFormat(undefined, { month: style, timeZone: "UTC" }).format(date);
+      const tokens = { YYYY: String(year), YY: String(year).slice(-2), MMMM: monthName("long"), MMM: monthName("short"), MM: raw.slice(5, 7), M: String(month), DD: raw.slice(8), D: String(day) };
+      return (custom.trim() || "DD/MM/YYYY").slice(0, 80).replace(/YYYY|MMMM|MMM|YY|MM|DD|M|D/g, token => tokens[token]);
+    }
     return new Intl.DateTimeFormat(undefined, {
-      year: "numeric", month: "long", ...(raw.length === 10 ? { day: "numeric" } : {}), timeZone: "UTC"
+      year: "numeric", month: format === "short" ? "short" : "long", ...(hasDay ? { day: "numeric" } : {}), timeZone: "UTC"
     }).format(date);
   }
 
@@ -219,6 +232,7 @@
   }
 
   function render(state) {
+    lastState = state;
     stopMarquee();
     hasTrack = Boolean(state.title);
     panel.hidden = !hasTrack || (!settings.date && !settings.genres);
@@ -256,7 +270,7 @@
       ["date", "Date Toggle", "Show the release date beside the song title."],
       ["genres", "Genres Toggle", "Show clickable genres beside the artists or audio quality."]
     ]) {
-      const row = node("label", "", "pp-setting-row");
+      const row = node("div", "", "pp-setting-row");
       const text = node("span", "", "pp-setting-text");
       text.append(node("strong", title), node("span", description, "pp-setting-description"));
       const toggle = node("input");
@@ -269,6 +283,40 @@
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Session settings still work. */ }
         applyVisibility();
       };
+      if (key === "date") {
+        const controls = node("div", "", "pp-date-controls");
+        const label = node("label", "Date Format:");
+        const select = node("select");
+        select.setAttribute("aria-label", "Date Format");
+        for (const [value, title] of dateFormats) {
+          const option = node("option", title);
+          option.value = value;
+          select.append(option);
+        }
+        select.value = settings.dateFormat;
+        label.append(select);
+        const customLabel = node("label", "Custom Formatting");
+        const custom = node("input");
+        custom.type = "text";
+        custom.value = settings.customDateFormat;
+        custom.placeholder = "DD/MM/YYYY";
+        custom.maxLength = 80;
+        custom.setAttribute("aria-label", "Custom Formatting");
+        const help = node("span", "Example: DD/MM/YYYY · Tokens: YYYY, YY, MMMM, MMM, MM, M, DD, D. Release time is unavailable. Month/year-only dates keep their original precision.", "pp-setting-description");
+        customLabel.append(custom);
+        const saveFormat = () => {
+          settings.dateFormat = select.value;
+          settings.customDateFormat = custom.value;
+          customLabel.hidden = select.value !== "custom";
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Session settings still work. */ }
+          if (lastState) render(lastState);
+        };
+        select.onchange = saveFormat;
+        custom.oninput = saveFormat;
+        customLabel.hidden = settings.dateFormat !== "custom";
+        controls.append(label, customLabel, help);
+        text.append(controls);
+      }
       row.append(text, toggle);
       content.append(row);
     }
@@ -395,13 +443,17 @@
       .pp-settings .pp-setting-row{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:18px 0;cursor:pointer}
       .pp-settings .pp-setting-row+.pp-setting-row{border-top:1px solid #ffffff18}
       .pp-settings .pp-setting-text{display:flex;flex-direction:column;gap:6px}
+      .pp-date-controls{display:flex;flex-direction:column;gap:10px;margin-top:12px;max-width:310px}
+      .pp-date-controls label{display:flex;flex-direction:column;gap:6px;font-size:13px}
+      .pp-date-controls [hidden]{display:none}
+      .pp-date-controls select,.pp-date-controls input[type="text"]{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--spice-subtext,#b3b3b3);border-radius:5px;background:var(--spice-main,#121212);color:var(--spice-text,#fff);font:inherit}
       .pp-settings strong{font-size:15px;font-weight:600}
       .pp-settings .pp-setting-description{font-size:13px;line-height:1.5;color:var(--spice-subtext,#b3b3b3);max-width:310px}
-      .pp-settings input{appearance:none;position:relative;width:40px;height:24px;flex-shrink:0;border:0;border-radius:20px;background:var(--spice-misc,#727272);cursor:pointer;transition:background .15s}
-      .pp-settings input:checked{background:var(--spice-button,#1ed760)}
-      .pp-settings input:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .15s}
-      .pp-settings input:checked:before{transform:translateX(16px)}
-      .pp-settings input:focus-visible{outline:2px solid var(--spice-text,#fff);outline-offset:3px}
+      .pp-settings input[type="checkbox"]{appearance:none;position:relative;width:40px;height:24px;flex-shrink:0;border:0;border-radius:20px;background:var(--spice-misc,#727272);cursor:pointer;transition:background .15s}
+      .pp-settings input[type="checkbox"]:checked{background:var(--spice-button,#1ed760)}
+      .pp-settings input[type="checkbox"]:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .15s}
+      .pp-settings input[type="checkbox"]:checked:before{transform:translateX(16px)}
+      .pp-settings input[type="checkbox"]:focus-visible{outline:2px solid var(--spice-text,#fff);outline-offset:3px}
     `;
     document.head.append(style);
     panel = node("section");
@@ -425,6 +477,8 @@
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
       if (typeof saved?.date === "boolean") settings.date = saved.date;
       if (typeof saved?.genres === "boolean") settings.genres = saved.genres;
+      if (dateFormats.some(([value]) => value === saved?.dateFormat)) settings.dateFormat = saved.dateFormat;
+      if (typeof saved?.customDateFormat === "string") settings.customDateFormat = saved.customDateFormat.slice(0, 80);
     } catch { /* Invalid or unavailable storage uses enabled defaults. */ }
     applyVisibility();
     const menuIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M1 2Q1 1 2 1.5L11.5 6.5Q12.5 7 11.5 7.5L2 12.5Q1 13 1 12Z"/><path d="M8 11H9.2V12.2H10.4V13.4H9.2V14.6H8V13.4H6.8V12.2H8ZM12.8 11H14V12.2H15.2V13.4H14V14.6H12.8V13.4H11.6V12.2H12.8Z" style="stroke:currentColor;stroke-width:.3;stroke-linejoin:round"/></svg>';

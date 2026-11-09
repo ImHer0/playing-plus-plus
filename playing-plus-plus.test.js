@@ -354,3 +354,37 @@ test("Unicode hyphens in MusicBrainz artist names match Spotify credits", async 
   assert.match(app.panel.title, /MusicBrainz artist genres/);
   assert.equal(app.genreLinks()[0].href, "/search/east%20coast%20hip%20hop/playlists");
 });
+
+
+test("date formats and custom tokens preserve real release precision", () => {
+  assert.equal(dateText("2024-01-31", "dmy"), "31/01/2024");
+  assert.equal(dateText("2024-01-31", "mdy"), "01/31/2024");
+  assert.equal(dateText("2024-01-31", "iso"), "2024-01-31");
+  assert.equal(dateText("2024-01-31", "custom", "DD.MM.YYYY"), "31.01.2024");
+  assert.equal(dateText("2024-01-31", "custom", "D/M/YY"), "31/1/24");
+  assert.equal(dateText("2024-01", "custom", "DD/MM/YYYY"), "2024-01");
+  assert.equal(dateText("2024", "dmy"), "2024");
+  assert.equal(dateText("2024-02-31", "iso"), "Unavailable");
+});
+
+
+test("date format settings update playback immediately and survive reload", async () => {
+  const get = url => Promise.resolve(url.includes("artists/") ? { genres: ["rock"] } : { album: { release_date: "2024-01-31" }, artists: [{ id: "a".repeat(22) }] });
+  const app = harness(get);
+  app.player.data = { item: item("f") }; app.change(); await flush();
+  app.openSettings();
+  const controls = app.modal.content.children[0].children[0].children[2];
+  const select = controls.children[0].children[0];
+  const customLabel = controls.children[1];
+  const input = customLabel.children[0];
+  select.value = "dmy"; select.onchange();
+  assert.equal(app.dateLabel().textContent, " · 31/01/2024");
+  assert.equal(customLabel.hidden, true);
+  select.value = "custom"; select.onchange();
+  assert.equal(customLabel.hidden, false);
+  input.value = "YYYY.MM.DD"; input.oninput();
+  assert.equal(app.dateLabel().textContent, " · 2024.01.31");
+  const reloaded = harness(get, undefined, "legacy", app.storage);
+  reloaded.player.data = { item: item("f") }; reloaded.change(); await flush();
+  assert.equal(reloaded.dateLabel().textContent, " · 2024.01.31");
+});
