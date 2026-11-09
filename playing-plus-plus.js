@@ -2,7 +2,7 @@
 (() => {
   "use strict";
   const SETTINGS_KEY = "playing-plus-plus:settings";
-  const settings = { date: true, genres: true, dateFormat: "long", customDateFormat: "DD/MM/YYYY" };
+  const settings = { date: true, genres: true, dateFormat: "long", customDateFormat: "DD/MM/YYYY", maxGenres: 0, hiddenGenres: "", hideUnavailableGenres: false };
   const dateFormats = [["long", "January 31, 2024"], ["short", "Jan 31, 2024"], ["dmy", "31/01/2024"], ["mdy", "01/31/2024"], ["iso", "2024-01-31"], ["custom", "Custom"]];
   let lastState;
   const cache = new Map();
@@ -15,6 +15,7 @@
   let retryCount = 0;
   let dateLine;
   let genreLine;
+  let genresFilteredOut = false;
   let hasTrack = false;
   let marqueeFrame;
 
@@ -114,11 +115,53 @@
     });
   }
 
-  async function recordingGenres(isrc, track) {
+  function sameRecording(recording, track, isrc) {
+    const normalize = value => String(value || "").normalize("NFKC").replace(/[\u2010-\u2015]/g, "-").replace(/[’‘]/g, "'").toLowerCase().trim();
+    const credits = recording?.["artist-credit"]?.map(c => normalize(c.artist?.name || c.name)).sort();
+    const artists = track?.artists?.map(a => normalize(a.name)).sort();
+    return Boolean(recording && track?.name && artists?.length && artists.every(Boolean) &&
+      /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/i.test(isrc || "") &&
+      recording.isrcs?.some(code => code.toUpperCase() === isrc.toUpperCase()) &&
+      normalize(recording.title) === normalize(track.name) &&
+      Number.isFinite(recording.length) && Number.isFinite(track.duration_ms) && track.duration_ms > 0 &&
+      Math.abs(recording.length - track.duration_ms) <= 1000 &&
+      credits?.length === artists.length && credits.every((name, i) => name === artists[i]) &&
+      !recording.disambiguation && recording.video !== true);
+  }
+
+  function earlierReleaseDate(search, recording, track, isrc, edition) {
+    const matches = (search?.recordings || []).filter(r => r.isrcs?.some(code => code.toUpperCase() === isrc?.toUpperCase()));
+    // A truncated or ambiguous ISRC search cannot establish a unique recording.
+    if (!search || (search.count || search.recordings?.length) >= 5 || matches.length !== 1 ||
+        matches[0].id !== recording?.id || matches[0]["first-release-date"] !== recording?.["first-release-date"] || !sameRecording(matches[0], track, isrc) || !sameRecording(recording, track, isrc)) return;
+    const range = value => {
+      const raw = typeof value === "object" && value
+        ? [value.year, value.month, value.day].filter(v => v != null).map((v, i) => i ? String(v).padStart(2, "0") : String(v)).join("-")
+        : String(value || "");
+      if (dateText(raw) === "Unavailable") return;
+      const [y, m, d] = raw.split("-").map(Number);
+      const lower = `${String(y).padStart(4, "0")}-${String(m || 1).padStart(2, "0")}-${String(d || 1).padStart(2, "0")}`;
+      const upper = `${String(y).padStart(4, "0")}-${String(m || 12).padStart(2, "0")}-${String(d || (m ? new Date(Date.UTC(y, m, 0)).getUTCDate() : 31)).padStart(2, "0")}`;
+      return { raw, lower, upper };
+    };
+    const original = range(recording["first-release-date"]);
+    const current = range(edition);
+    return original && current && original.upper < current.lower ? original.raw : undefined;
+  }
+
+  function displayedGenres(genres, max = settings.maxGenres, hidden = settings.hiddenGenres) {
+    const excluded = new Set(hidden.split(",").map(value => value.trim().toLowerCase()).filter(Boolean));
+    const names = [...new Set(genres || [])].filter(name => !excluded.has(name.toLowerCase()));
+    return max > 0 ? names.slice(0, max) : names;
+  }
+
+  async function recordingGenres(isrc, track, editionDate) {
+    let isrcSearch;
     let match;
     let candidates = [];
     if (/^[A-Z]{2}[A-Z0-9]{3}\d{7}$/i.test(isrc || "")) {
       const search = await musicbrainz(`recording?query=${encodeURIComponent(`isrc:${isrc}`)}&fmt=json&limit=5`);
+      isrcSearch = search;
       match = search.recordings?.find(r => r.isrcs?.some(code => code.toUpperCase() === isrc.toUpperCase()));
     }
     // Some Spotify responses omit ISRC. Require an unambiguous title, artist
@@ -143,8 +186,10 @@
     // Different editions can still identify the same artist unambiguously.
     const artistId = artistIds.length && artistIds.every(value => value && value === artistIds[0]) ? artistIds[0] : null;
     if (!match) return { genres: [], artistId };
-    const recording = await musicbrainz(`recording/${match.id}?inc=genres&fmt=json`);
-    return { genres: (recording.genres || []).filter(g => g.count > 0).sort((a, b) => b.count - a.count).map(g => g.name), artistId };
+    const checkOriginal = sameRecording(match, track, isrc);
+    const recording = await musicbrainz(`recording/${match.id}?inc=${checkOriginal ? "genres+artists+isrcs" : "genres"}&fmt=json`);
+    const originalDate = checkOriginal ? earlierReleaseDate(isrcSearch, recording, track, isrc, editionDate) : undefined;
+    return { genres: (recording.genres || []).filter(g => g.count > 0).sort((a, b) => b.count - a.count).map(g => g.name), artistId, originalDate };
   }
 
   async function artistGenres(name, knownId) {
@@ -236,9 +281,12 @@
     stopMarquee();
     hasTrack = Boolean(state.title);
     panel.hidden = !hasTrack || (!settings.date && !settings.genres);
-    const genreNames = [...new Set(state.genres || [])];
+    const allGenres = [...new Set(state.genres || [])];
+    const genreNames = displayedGenres(allGenres);
+    genresFilteredOut = !state.message && ((allGenres.length > 0 && genreNames.length === 0) ||
+      (settings.hideUnavailableGenres && !allGenres.length && Boolean(state.genreSource)));
     const genres = genreNames.join(" · ");
-    dateLine.textContent = ` · ${state.message ? "—" : dateText(state.date)}`;
+    dateLine.textContent = ` · ${state.message ? "—" : dateText(state.date)}${!state.message && state.originalDate ? "*" : ""}`;
     genreLine.replaceChildren();
     genreLine.textContent = "";
     if (genreNames.length && !state.message) {
@@ -250,7 +298,8 @@
       "Spotify album / edition release", state.genreSource, state.warning].filter(Boolean).join("\n");
     panel.title = details;
     panel.setAttribute("aria-label", details);
-    dateLine.title = genreLine.title = details;
+    dateLine.title = [state.originalDate && !state.message ? `Earliest documented release of this recording: ${dateText(state.originalDate)} (MusicBrainz)` : "", details].filter(Boolean).join("\n");
+    genreLine.title = [details, allGenres.length ? `All genres: ${allGenres.join(" · ")}` : ""].filter(Boolean).join("\n");
     genreLine.setAttribute("aria-label", [genres || state.genreSource || state.message, state.warning].filter(Boolean).join(". "));
     applyVisibility();
     mount();
@@ -260,7 +309,7 @@
   function applyVisibility() {
     panel.hidden = !hasTrack || (!settings.date && !settings.genres);
     dateLine.hidden = !hasTrack || !settings.date;
-    genreLine.hidden = !hasTrack || !settings.genres;
+    genreLine.hidden = !hasTrack || !settings.genres || genresFilteredOut;
     if (genreLine.hidden) stopMarquee();
   }
 
@@ -315,6 +364,43 @@
         custom.oninput = saveFormat;
         customLabel.hidden = settings.dateFormat !== "custom";
         controls.append(label, customLabel, help);
+        text.append(controls);
+      }
+      if (key === "genres") {
+        const controls = node("div", "", "pp-date-controls pp-genre-controls");
+        const countLabel = node("label", "Maximum genres");
+        const count = node("select");
+        count.setAttribute("aria-label", "Maximum genres");
+        for (const value of [0, 1, 2, 3, 4, 5, 8, 10]) {
+          const option = node("option", value ? String(value) : "All genres");
+          option.value = String(value);
+          count.append(option);
+        }
+        count.value = String(settings.maxGenres);
+        countLabel.append(count);
+        const hiddenLabel = node("label", "Hide genres");
+        const hidden = node("input");
+        hidden.type = "text";
+        hidden.value = settings.hiddenGenres;
+        hidden.placeholder = "e.g. pop, rock";
+        hidden.maxLength = 500;
+        hidden.setAttribute("aria-label", "Hide genres");
+        hiddenLabel.append(hidden, node("span", "Separate exact genre names with commas. The full list stays available on hover.", "pp-setting-description"));
+        const unavailableLabel = node("label", "Hide “Genres unavailable”", "pp-inline-option");
+        const unavailable = node("input");
+        unavailable.type = "checkbox";
+        unavailable.checked = settings.hideUnavailableGenres;
+        unavailable.setAttribute("aria-label", "Hide Genres unavailable");
+        unavailableLabel.append(unavailable);
+        const saveGenres = () => {
+          settings.maxGenres = Number(count.value);
+          settings.hiddenGenres = hidden.value;
+          settings.hideUnavailableGenres = unavailable.checked;
+          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Session settings still work. */ }
+          if (lastState) render(lastState);
+        };
+        count.onchange = hidden.oninput = unavailable.onchange = saveGenres;
+        controls.append(countLabel, hiddenLabel, unavailableLabel);
         text.append(controls);
       }
       row.append(text, toggle);
@@ -386,8 +472,9 @@
       duration_ms: api.Player.getDuration?.() || Number(item.metadata?.duration || item.duration?.milliseconds || item.duration)
     };
     try {
-      const result = await recordingGenres(track?.external_ids?.isrc, recording);
+      const result = await recordingGenres(track?.external_ids?.isrc, recording, state.date);
       genres = result.genres;
+      state.originalDate = result.originalDate;
       recordingArtistId = result.artistId;
     }
     catch (error) {
@@ -453,7 +540,7 @@
       #playing-plus-plus-genres .pp-genre-link{color:inherit;font:inherit;text-decoration:none;cursor:pointer}
       #playing-plus-plus-genres .pp-genre-link:hover{text-decoration:underline;color:var(--spice-text,#fff)}
       #playing-plus-plus-genres .pp-genre-link:focus-visible{outline:2px solid var(--spice-button,#1ed760);outline-offset:2px}
-      .pp-settings{width:430px;max-width:100%;box-sizing:border-box;padding:4px 0 8px;color:var(--spice-text,#fff)}
+      .pp-settings{width:430px;max-width:100%;max-height:min(70vh,700px);overflow-y:auto;scrollbar-width:thin;box-sizing:border-box;padding:4px 4px 8px;color:var(--spice-text,#fff)}
       .pp-settings .pp-setting-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;row-gap:6px;padding:20px;border:1px solid #ffffff12;border-radius:14px;background:var(--spice-highlight,#ffffff08)}
       .pp-settings .pp-setting-row+.pp-setting-row{margin-top:12px}
       .pp-settings .pp-setting-text{display:contents}
@@ -467,6 +554,7 @@
       .pp-date-controls input[type="text"]{font-family:ui-monospace,Consolas,monospace}
       .pp-date-controls select:hover,.pp-date-controls input[type="text"]:hover{border-color:var(--spice-subtext,#b3b3b3)}
       .pp-date-controls select:focus-visible,.pp-date-controls input[type="text"]:focus-visible{outline:2px solid var(--spice-button,#1ed760);outline-offset:2px}
+      .pp-date-controls .pp-inline-option{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px;font-weight:400}
       .pp-settings .pp-token-guide{font-size:11px;font-weight:400;line-height:1.7}
       .pp-settings .pp-date-note{font-size:11px;line-height:1.6}
       .pp-settings input[type="checkbox"]{grid-column:2;grid-row:1/3;align-self:start;appearance:none;position:relative;width:40px;height:24px;margin:0;flex-shrink:0;border:0;border-radius:20px;background:var(--spice-misc,#727272);cursor:pointer;transition:background .15s}
@@ -506,6 +594,9 @@
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
       if (typeof saved?.date === "boolean") settings.date = saved.date;
       if (typeof saved?.genres === "boolean") settings.genres = saved.genres;
+      if ([0, 1, 2, 3, 4, 5, 8, 10].includes(saved?.maxGenres)) settings.maxGenres = saved.maxGenres;
+      if (typeof saved?.hiddenGenres === "string") settings.hiddenGenres = saved.hiddenGenres.slice(0, 500);
+      if (typeof saved?.hideUnavailableGenres === "boolean") settings.hideUnavailableGenres = saved.hideUnavailableGenres;
       if (dateFormats.some(([value]) => value === saved?.dateFormat)) settings.dateFormat = saved.dateFormat;
       if (typeof saved?.customDateFormat === "string") settings.customDateFormat = saved.customDateFormat.slice(0, 80);
     } catch { /* Invalid or unavailable storage uses enabled defaults. */ }
@@ -532,6 +623,6 @@
   }
 
   // Pure helpers are exported only for Node's built-in test runner.
-  if (typeof document === "undefined" && typeof module !== "undefined" && module.exports) module.exports = { dateText, id };
+  if (typeof document === "undefined" && typeof module !== "undefined" && module.exports) module.exports = { dateText, id, sameRecording, earlierReleaseDate, displayedGenres };
   else start();
 })();

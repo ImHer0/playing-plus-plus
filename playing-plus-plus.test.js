@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
-const { dateText, id } = require("./playing-plus-plus.js");
+const { dateText, id, sameRecording, earlierReleaseDate, displayedGenres } = require("./playing-plus-plus.js");
 
 test("dates preserve year/month/day precision", () => {
   assert.equal(dateText("1997"), "1997");
@@ -403,4 +403,82 @@ test("settings include the donation footer and no release-time notice", () => {
     assert.match(link.innerHTML, /<svg/);
   }
   assert.doesNotMatch(app.modal.content.text, /Release time/i);
+});
+
+
+function originalReleaseFixture() {
+  const track = { name: "Example", artists: [{ name: "Artist" }], duration_ms: 180000 };
+  const recording = { id: "unique-recording", title: "Example", length: 180000, isrcs: ["GBABC0100001"], "artist-credit": [{ artist: { name: "Artist" } }], "first-release-date": "2001-03-12" };
+  return { track, recording, search: { count: 1, recordings: [recording] } };
+}
+
+test("earlier release requires a unique exact recording with consistent metadata", () => {
+  const { track, recording, search } = originalReleaseFixture();
+  const check = (query = search, record = recording, edition = "2020-01-01") => earlierReleaseDate(query, record, track, "GBABC0100001", edition);
+  assert.equal(check(), "2001-03-12");
+  assert.equal(check(search, { ...recording, "first-release-date": "2000-01-01" }), undefined);
+  assert.equal(check({ count: 2, recordings: [recording, { ...recording, id: "another" }] }), undefined);
+  assert.equal(check({ count: 6, recordings: [recording] }), undefined);
+  for (const changes of [{ title: "Example (Live)" }, { length: 190000 }, { isrcs: [] }, { "artist-credit": [{ name: "Namesake" }] }, { disambiguation: "different mix" }, { video: true }, { "first-release-date": "2001-02-30" }]) {
+    assert.equal(check(search, { ...recording, ...changes }), undefined);
+  }
+  assert.equal(sameRecording({ ...recording, "artist-credit": [{ name: "Artist" }, { name: "Guest" }] }, track, "GBABC0100001"), false);
+  assert.equal(check(search, recording, "2001-03-12"), undefined);
+  assert.equal(check(search, recording, "2001"), undefined);
+  assert.equal(check(search, { ...recording, "first-release-date": "2001" }, "2001-10-01"), undefined);
+  assert.equal(check({ count: 1, recordings: [{ ...recording, "first-release-date": "2001" }] }, { ...recording, "first-release-date": "2001" }, "2002"), "2001");
+  assert.equal(check({ count: 1, recordings: [{ ...recording, "first-release-date": "2001-03" }] }, { ...recording, "first-release-date": "2001-03" }, "2001-04"), "2001-03");
+});
+
+test("genre filters hide exact tags, preserve order and limit the visible count", () => {
+  assert.deepEqual(displayedGenres(["pop", "dream pop", "rock", "shoegaze", "shoegaze"], 2, " POP , ROCK "), ["dream pop", "shoegaze"]);
+  assert.deepEqual(displayedGenres(["pop", "rock"], 0, ""), ["pop", "rock"]);
+  assert.deepEqual(displayedGenres(["pop"], 0, "pop"), []);
+});
+
+test("earlier release marker appears only for a confirmed recording and clears on song change", async () => {
+  const { track, recording, search } = originalReleaseFixture();
+  const app = harness(() => Promise.resolve({ ...track, album: { release_date: "2020-01-01" }, external_ids: { isrc: "GBABC0100001" } }), async url => ({ ok: true, json: async () => url.includes("query=") ? search : { ...recording, genres: [{ name: "rock", count: 1 }] } }));
+  app.player.data = { item: item("a") }; app.change();
+  await new Promise(resolve => setTimeout(resolve, 1250));
+  assert.match(app.dateLabel().textContent, /2020\*$/);
+  assert.match(app.dateLabel().title, /Earliest documented release.*2001.*MusicBrainz/);
+  assert.doesNotMatch(app.dateLabel().textContent, /2001/);
+  app.player.data = { item: { uri: "spotify:local:a", name: "Local" } }; app.change();
+  assert.doesNotMatch(app.dateLabel().textContent, /\*/);
+  assert.doesNotMatch(app.dateLabel().title, /2001/);
+});
+
+test("genre display controls apply immediately, retain clickable tags and persist", async () => {
+  const get = url => Promise.resolve(url.includes("artists/") ? { genres: ["pop", "dream pop", "shoegaze"] } : { album: { release_date: "2024" }, artists: [{ id: "a".repeat(22) }] });
+  const app = harness(get);
+  app.player.data = { item: item("s") }; app.change(); await flush();
+  app.openSettings();
+  const controls = app.modal.content.children[1].children[0].children[2];
+  const count = controls.children[0].children[0];
+  const hidden = controls.children[1].children[0];
+  count.value = "1"; count.onchange();
+  hidden.value = "pop"; hidden.oninput();
+  assert.equal(app.genreLinks().length, 1);
+  assert.equal(app.genreLinks()[0].text, "dream pop");
+  assert.match(app.genreLabel().title, /All genres: pop · dream pop · shoegaze/);
+  const reloaded = harness(get, undefined, "legacy", app.storage);
+  reloaded.player.data = { item: item("s") }; reloaded.change(); await flush();
+  assert.equal(reloaded.genreLinks()[0].text, "dream pop");
+  hidden.value = "pop, dream pop, shoegaze"; hidden.oninput();
+  assert.equal(app.genreLabel().hidden, true);
+  hidden.value = ""; hidden.oninput();
+  assert.equal(app.genreLabel().hidden, false);
+});
+
+test("hide unavailable genres does not hide the date", async () => {
+  const app = harness(() => Promise.resolve({ album: { release_date: "2024" }, artists: [] }));
+  app.player.data = { item: item("t") }; app.change(); await flush();
+  app.openSettings();
+  const toggle = app.modal.content.children[1].children[0].children[2].children[2].children[0];
+  toggle.checked = true; toggle.onchange();
+  assert.equal(app.genreLabel().hidden, true);
+  assert.equal(app.dateLabel().hidden, false);
+  toggle.checked = false; toggle.onchange();
+  assert.equal(app.genreLabel().hidden, false);
 });

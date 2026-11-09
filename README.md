@@ -27,13 +27,13 @@ spicetify apply
 
 ## Settings
 
-Open your profile picture menu and choose **Playing++**. **Date Toggle** and **Genres Toggle** are saved automatically.
+Open your profile picture menu and choose **Playing++**. **Date Toggle** and **Genres Toggle** are saved automatically. Choose a date format or enter a custom pattern such as `DD/MM/YYYY`. Genre display controls let you limit the number of visible tags, hide exact genre names with a comma-separated list, and hide “Genres unavailable”. Changes apply immediately; hover over the genre line for the complete list.
 
 ![Playing++ settings](assets/settings.png)
 
 ## About the data
 
-The date is for the Spotify album or edition currently playing; a remaster may have a different date from the original release.
+The date is for the Spotify album or edition currently playing. An asterisk (`*`) marks an earlier documented release of the same recording; hover over the date to see it. This requires a unique ISRC result and matching title, complete artist credits, and duration in both MusicBrainz search and recording details. Ambiguous matches, different versions, and overlapping partial dates get no marker. MusicBrainz is community maintained: this is the earliest date documented there, not a guarantee of the first release worldwide.
 
 Genres come from MusicBrainz recording tags, with Spotify artist genres, MusicBrainz artist tags, and Apple catalog genres as fallbacks. Artist genres can describe the artist more broadly than the individual song. Hover over the details to see the source. Some songs have no available genres.
 
