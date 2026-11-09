@@ -1,0 +1,7 @@
+{
+  "name": "playing-plus-plus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Release dates and genres for the currently playing Spotify song",
+  "scripts": { "test": "node --test", "check": "node --check playing-plus-plus.js" }
+}
