@@ -271,7 +271,7 @@
       ["genres", "Genres Toggle", "Show clickable genres beside the artists or audio quality."]
     ]) {
       const row = node("div", "", "pp-setting-row");
-      const text = node("span", "", "pp-setting-text");
+      const text = node("div", "", "pp-setting-text");
       text.append(node("strong", title), node("span", description, "pp-setting-description"));
       const toggle = node("input");
       toggle.type = "checkbox";
@@ -302,8 +302,8 @@
         custom.placeholder = "DD/MM/YYYY";
         custom.maxLength = 80;
         custom.setAttribute("aria-label", "Custom Formatting");
-        const help = node("span", "Example: DD/MM/YYYY · Tokens: YYYY, YY, MMMM, MMM, MM, M, DD, D. Release time is unavailable. Month/year-only dates keep their original precision.", "pp-setting-description");
-        customLabel.append(custom);
+        const help = node("span", "Month or year-only releases keep their original precision.", "pp-setting-description pp-date-note");
+        customLabel.append(custom, node("span", "Try DD/MM/YYYY · YYYY / YY = year · MMMM / MMM / MM / M = month · DD / D = day", "pp-setting-description pp-token-guide"));
         const saveFormat = () => {
           settings.dateFormat = select.value;
           settings.customDateFormat = custom.value;
@@ -320,6 +320,20 @@
       row.append(text, toggle);
       content.append(row);
     }
+    const support = node("footer", "", "pp-support");
+    support.append(node("span", "Support Playing++", "pp-support-title"));
+    const links = node("div", "", "pp-support-links");
+    for (const [name, url, path] of [["Ko-fi", "https://ko-fi.com/imher0", "M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.022 11.822c.164 2.424 2.586 2.672 2.586 2.672s8.267-.023 11.966-.049c2.438-.426 2.683-2.566 2.658-3.734 4.352.24 7.422-2.831 6.649-6.916zm-11.062 3.511c-1.246 1.453-4.011 3.976-4.011 3.976s-.121.119-.31.023c-.076-.057-.108-.09-.108-.09-.443-.441-3.368-3.049-4.034-3.954-.709-.965-1.041-2.7-.091-3.71.951-1.01 3.005-1.086 4.363.407 0 0 1.565-1.782 3.468-.963 1.904.82 1.832 3.011.723 4.311zm6.173.478c-.928.116-1.682.028-1.682.028V7.284h1.77s1.971.551 1.971 2.638c0 1.913-.985 2.667-2.059 3.015z"], ["PayPal", "https://www.paypal.com/paypalme/ImHer0TM", "M7.016 19.198h-4.2a.562.562 0 0 1-.555-.65L5.093.584A.692.692 0 0 1 5.776 0h7.222c3.417 0 5.904 2.488 5.846 5.5-.006.25-.027.5-.066.747A6.794 6.794 0 0 1 12.071 12H8.743a.69.69 0 0 0-.682.583l-.325 2.056-.013.083-.692 4.39-.015.087zM19.79 6.142c-.01.087-.01.175-.023.261a7.76 7.76 0 0 1-7.695 6.598H9.007l-.283 1.795-.013.083-.692 4.39-.134.843-.014.088H6.86l-.497 3.15a.562.562 0 0 0 .555.65h3.612c.34 0 .63-.249.683-.585l.952-6.031a.692.692 0 0 1 .683-.584h2.126a6.793 6.793 0 0 0 6.707-5.752c.306-1.95-.466-3.744-1.89-4.906z"], ["GitHub Sponsors", "https://github.com/sponsors/ImHer0", "M17.625 1.499c-2.32 0-4.354 1.203-5.625 3.03-1.271-1.827-3.305-3.03-5.625-3.03C3.129 1.499 0 4.253 0 8.249c0 4.275 3.068 7.847 5.828 10.227a33.14 33.14 0 0 0 5.616 3.876l.028.017.008.003-.001.003c.163.085.342.126.521.125.179.001.358-.041.521-.125l-.001-.003.008-.003.028-.017a33.14 33.14 0 0 0 5.616-3.876C20.932 16.096 24 12.524 24 8.249c0-3.996-3.129-6.75-6.375-6.75zm-.919 15.275a30.766 30.766 0 0 1-4.703 3.316l-.004-.002-.004.002a30.955 30.955 0 0 1-4.703-3.316c-2.677-2.307-5.047-5.298-5.047-8.523 0-2.754 2.121-4.5 4.125-4.5 2.06 0 3.914 1.479 4.544 3.684.143.495.596.797 1.086.796.49.001.943-.302 1.085-.796.63-2.205 2.484-3.684 4.544-3.684 2.004 0 4.125 1.746 4.125 4.5 0 3.225-2.37 6.216-5.048 8.523z"]]) {
+      const link = node("a", "", "pp-support-link");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="${path}"/></svg>`;
+      link.append(node("span", name));
+      links.append(link);
+    }
+    support.append(links);
+    content.append(support);
     api.PopupModal.display({ title: "Playing++", content });
   }
 
@@ -439,21 +453,36 @@
       #playing-plus-plus-genres .pp-genre-link{color:inherit;font:inherit;text-decoration:none;cursor:pointer}
       #playing-plus-plus-genres .pp-genre-link:hover{text-decoration:underline;color:var(--spice-text,#fff)}
       #playing-plus-plus-genres .pp-genre-link:focus-visible{outline:2px solid var(--spice-button,#1ed760);outline-offset:2px}
-      .pp-settings{min-width:300px;padding:4px 0;color:var(--spice-text,#fff)}
-      .pp-settings .pp-setting-row{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:18px 0;cursor:pointer}
-      .pp-settings .pp-setting-row+.pp-setting-row{border-top:1px solid #ffffff18}
-      .pp-settings .pp-setting-text{display:flex;flex-direction:column;gap:6px}
-      .pp-date-controls{display:flex;flex-direction:column;gap:10px;margin-top:12px;max-width:310px}
-      .pp-date-controls label{display:flex;flex-direction:column;gap:6px;font-size:13px}
+      .pp-settings{width:430px;max-width:100%;box-sizing:border-box;padding:4px 0 8px;color:var(--spice-text,#fff)}
+      .pp-settings .pp-setting-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;row-gap:6px;padding:20px;border:1px solid #ffffff12;border-radius:14px;background:var(--spice-highlight,#ffffff08)}
+      .pp-settings .pp-setting-row+.pp-setting-row{margin-top:12px}
+      .pp-settings .pp-setting-text{display:contents}
+      .pp-settings strong{grid-column:1;font-size:15px;font-weight:600;line-height:24px;letter-spacing:-.15px}
+      .pp-settings .pp-setting-description{grid-column:1;font-size:12px;line-height:1.6;color:var(--spice-subtext,#b3b3b3)}
+      .pp-date-controls{grid-column:1/-1;display:flex;flex-direction:column;gap:14px;margin-top:12px;padding-top:18px;border-top:1px solid #ffffff12}
+      .pp-date-controls label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:600;color:var(--spice-text,#fff)}
       .pp-date-controls [hidden]{display:none}
-      .pp-date-controls select,.pp-date-controls input[type="text"]{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--spice-subtext,#b3b3b3);border-radius:5px;background:var(--spice-main,#121212);color:var(--spice-text,#fff);font:inherit}
-      .pp-settings strong{font-size:15px;font-weight:600}
-      .pp-settings .pp-setting-description{font-size:13px;line-height:1.5;color:var(--spice-subtext,#b3b3b3);max-width:310px}
-      .pp-settings input[type="checkbox"]{appearance:none;position:relative;width:40px;height:24px;flex-shrink:0;border:0;border-radius:20px;background:var(--spice-misc,#727272);cursor:pointer;transition:background .15s}
+      .pp-date-controls select,.pp-date-controls input[type="text"]{width:100%;box-sizing:border-box;min-height:42px;padding:10px 12px;border:1px solid #ffffff26;border-radius:8px;background:var(--spice-main,#121212);color:var(--spice-text,#fff);font:inherit;font-size:14px;font-weight:400;transition:border-color .15s}
+      .pp-date-controls select{cursor:pointer}
+      .pp-date-controls input[type="text"]{font-family:ui-monospace,Consolas,monospace}
+      .pp-date-controls select:hover,.pp-date-controls input[type="text"]:hover{border-color:var(--spice-subtext,#b3b3b3)}
+      .pp-date-controls select:focus-visible,.pp-date-controls input[type="text"]:focus-visible{outline:2px solid var(--spice-button,#1ed760);outline-offset:2px}
+      .pp-settings .pp-token-guide{font-size:11px;font-weight:400;line-height:1.7}
+      .pp-settings .pp-date-note{font-size:11px;line-height:1.6}
+      .pp-settings input[type="checkbox"]{grid-column:2;grid-row:1/3;align-self:start;appearance:none;position:relative;width:40px;height:24px;margin:0;flex-shrink:0;border:0;border-radius:20px;background:var(--spice-misc,#727272);cursor:pointer;transition:background .15s}
       .pp-settings input[type="checkbox"]:checked{background:var(--spice-button,#1ed760)}
       .pp-settings input[type="checkbox"]:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .15s}
       .pp-settings input[type="checkbox"]:checked:before{transform:translateX(16px)}
       .pp-settings input[type="checkbox"]:focus-visible{outline:2px solid var(--spice-text,#fff);outline-offset:3px}
+      .pp-support{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:20px;padding:2px 8px;color:var(--spice-subtext,#b3b3b3)}
+      .pp-support-title{font-size:11px;line-height:1.5}
+      .pp-support-links{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 20px}
+      .pp-support-link{display:inline-flex;align-items:center;gap:6px;color:inherit;font-size:11px;line-height:24px;text-decoration:none;transition:color .15s}
+      .pp-support-link:hover{color:var(--spice-text,#fff);text-decoration:underline}
+      .pp-support-link svg{flex-shrink:0}
+      .pp-support-link:focus-visible{outline:2px solid var(--spice-button,#1ed760);outline-offset:4px;border-radius:3px}
+      @media(max-width:520px){.pp-settings{width:100%}.pp-settings .pp-setting-row{padding:16px;column-gap:12px}}
+
     `;
     document.head.append(style);
     panel = node("section");
