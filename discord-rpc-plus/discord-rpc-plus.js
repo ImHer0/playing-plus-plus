@@ -26,5 +26,6 @@
   Spicetify.Player.addEventListener("songchange", update);
   Spicetify.Player.addEventListener("onplaypause", update);
   Spicetify.Player.addEventListener("onprogress", (() => { let last = 0; return () => { const p = Spicetify.Player.getProgress(); if (Math.abs(p - last - 1000) > 3000 && last) update(); last = p; }; })()); // re-sync after seeks
+  setInterval(update, 15000); // heartbeat and reconnect after Discord starts
   update();
 })();
