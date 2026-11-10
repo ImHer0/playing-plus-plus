@@ -70,3 +70,23 @@ export async function windowsSnapshot() {
         });
     });
 }
+
+const artworkCache = new Map<string, { expires: number; url?: string }>();
+export async function artwork(_event: unknown, title: string, artist: string, album: string) {
+    if (typeof title !== "string" || typeof artist !== "string" || !title || !artist || title.length > 512 || artist.length > 512) return;
+    const normalize = (text: string) => text.normalize("NFKD").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+    const key = JSON.stringify([title, artist, album]);
+    const cached = artworkCache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.url;
+    try {
+        const response = await fetch("https://itunes.apple.com/search?entity=song&limit=15&term=" + encodeURIComponent(title + " " + artist), { signal: AbortSignal.timeout(5000) });
+        if (!response.ok) return;
+        const result = await response.json();
+        const matches = (result.results || []).filter((row: any) => normalize(row.trackName || "") === normalize(title) && normalize(row.artistName || "") === normalize(artist));
+        const match = matches.find((row: any) => normalize(row.collectionName || "") === normalize(album || "")) || matches[0];
+        const url = typeof match?.artworkUrl100 === "string" && /^https:\/\/[^/]+\.mzstatic\.com\//.test(match.artworkUrl100) ? match.artworkUrl100.replace("100x100bb", "600x600bb") : undefined;
+        if (artworkCache.size >= 100) artworkCache.clear();
+        artworkCache.set(key, { expires: Date.now() + (url ? 86400000 : 300000), url });
+        return url;
+    } catch { return; }
+}

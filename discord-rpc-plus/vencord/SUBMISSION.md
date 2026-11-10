@@ -1,13 +1,9 @@
-# SpicetifyRPC build and submission notes
+# ListeningRPC submission notes
 
-Built against Vencord commit: 795ed0ff5b7e6b8db7488d0fcc95512a58edc919
+ListeningRPC is the Vencord companion; SpicetifyRPC is the optional Spotify extension.
 
-The desktop build contains SpicetifyRPC. Source lives under discord-rpc-plus/vencord in the extension repository. Copy that folder to src/userplugins/spicetifyRPC.desktop for local development. For upstream review, use src/plugins/spicetifyRPC.desktop.
+Place index.ts and native.ts in src/userplugins/listeningRPC.desktop for local builds, or src/plugins/listeningRPC.desktop for upstream review. Author: ImHer0, Discord ID 1401294711041429679.
 
-Install the custom build through Vencord's documented source-build installer (`pnpm inject` from the build checkout). The custom build has been installed and used locally. Enable SpicetifyRPC and disable the separate bridge before testing; both bind 127.0.0.1:6473.
+Build: pnpm build --dev --standalone. Type check: pnpm test:ts. Windows support uses built-in Windows PowerShell and Windows media sessions. Online artwork lookup sends title and artist to Apple's iTunes Search API. No separate Node runtime is needed for users of an installed custom desktop build.
 
-Validation completed: pnpm build --dev, pnpm test:ts, local HTTP receiver tests (valid song, clear, rejected malformed JSON, unsupported method, artwork URL filtering).
-
-Before submission: author Discord ID is set to `1401294711041429679`. Test live activity, artwork, Play song button from another account, pause, resume, seek, Discord restart and plugin disable. Current live-profile validation is pending. This is a development build, not an official Vencord release. No upstream PR has been opened.
-
-The plugin uses Discord's embedded native environment and requires no separate Node process at runtime. Vencord source builds still require development tooling.
+Not included in official Vencord. No upstream PR has been created by this tooling. Human review and live cross-account profile checks remain necessary before submission. See ../README.md for settings, privacy behaviour and limitations.

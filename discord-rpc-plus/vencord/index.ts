@@ -1,7 +1,7 @@
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
-import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
-const Native = VencordNative.pluginHelpers.SpicetifyRPC as PluginNative<typeof import("./native")>;
+import { ApplicationAssetUtils, FluxDispatcher, React } from "@webpack/common";
+const Native = VencordNative.pluginHelpers.ListeningRPC as PluginNative<typeof import("./native")>;
 function windowsOnly(): boolean { return settings.store.source === "windows"; }
 const settings = definePluginSettings({
     source: { type: OptionType.SELECT, description: "Playback source (Windows reads the current system media session)", options: [{label:"Spicetify",value:"spotify"},{label:"Windows media",value:"windows",default:true},{label:"Spicetify with Windows fallback",value:"auto"}] },
@@ -12,10 +12,10 @@ const settings = definePluginSettings({
     stateTemplate: { type: OptionType.STRING, description: "Second line template (blank hides it)", default: "{artist}" },
     playlistImage: { type: OptionType.BOOLEAN, description: "Use current playlist artwork instead of custom small image", default: false, hidden: windowsOnly },
     smallImage: { type: OptionType.SELECT, description: "Small image", options: [{ label: "None", value: "none", default: true }, { label: "Custom image / GIF URL", value: "custom" }] },
-    swapImages: { hidden: windowsOnly, type: OptionType.BOOLEAN, description: "Swap the selected image and album cover (selected image large, album small)", default: false },
+    swapImages: { type: OptionType.BOOLEAN, description: "Swap the selected image and album cover (selected image large, album small)", default: false },
     smallImageUrl: { type: OptionType.STRING, description: "Custom small image HTTPS URL", default: "" },
     smallImageText: { type: OptionType.STRING, description: "Small image hover text", default: "" },
-    showCover: { hidden: windowsOnly, type: OptionType.BOOLEAN, description: "Show album artwork", default: true },
+    showCover: { type: OptionType.BOOLEAN, description: "Show album artwork", default: true },
     showTime: { type: OptionType.BOOLEAN, description: "Show playback time", default: true },
     showButton: { hidden: windowsOnly, type: OptionType.BOOLEAN, description: "Show Play song button", default: true }
 });
@@ -24,12 +24,15 @@ let active = false;
 let last = "";
 let windowsData: any = null, windowsChecked = 0, windowsBusy = false;
 function clear() {
-    FluxDispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity: null, socketId: "SpicetifyRPC" });
+    FluxDispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity: null, socketId: "ListeningRPC" });
 }
 export default definePlugin({
-    name: "SpicetifyRPC",
+    name: "ListeningRPC",
     description: "Share Spicetify or Windows media activity. Windows media is the default; optional Spotify enrichment requires Spicetify.",
     settings,
+    settingsAboutComponent: () => React.createElement("p", null,
+        "Windows media works without Spicetify. For Spotify artwork, playlist context and exact song links: ",
+        React.createElement("a", { href: "https://github.com/ImHer0/spicetify-extensions/tree/main/discord-rpc-plus#install-the-spotify-extension", target: "_blank", rel: "noopener noreferrer" }, "SpicetifyRPC installation guide")),
     patches: [{
         find: ".USER_PROFILE_ACTIVITY_BUTTONS),",
         replacement: { match: /.getId\(\)===\i.id/, replace: "$& && false" }
@@ -53,8 +56,11 @@ export default definePlugin({
             last = key;
             if (!data) { clear(); return; }
             const trackId = /^spotify:track:([a-zA-Z0-9]{22})$/.exec(data.trackUri)?.[1];
-            const options = data.source !== "Spotify" ? { ...settings.store, showCover: false, showButton: false, swapImages: false, playlistImage: false } : settings.store.useSpotifySettings ? (data.options || {}) : settings.store;
+            const options = data.source !== "Spotify" ? { ...settings.store, showCover: settings.store.showCover, showButton: false, playlistImage: false } : settings.store.useSpotifySettings ? (data.options || {}) : settings.store;
             const template = (value: string) => value.replace(/\{(title|artist|album|playlist|source)\}/g, (_, k) => (k === "playlist" ? data.playlist?.name : data[k]) || "").slice(0, 128);
+            if (data.source !== "Spotify" && options.showCover && !data.cover) {
+                data.cover = await Native.artwork(data.title, data.artist, data.album || "");
+            }
             const image = async (url: string) => (await ApplicationAssetUtils.fetchAssetIds("1461099412649545850", [url]))[0];
             const activity: any = {
                 application_id: "1461099412649545850", name: template(options.nameTemplate ?? "{title}"), type: Number(options.activityType ?? 2),
@@ -76,7 +82,8 @@ export default definePlugin({
                 activity.buttons = ["Play song"];
                 activity.metadata = { button_urls: [`https://open.spotify.com/track/${trackId}`] };
             }
-            FluxDispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity, socketId: "SpicetifyRPC" });
+            if (!active) return;
+            FluxDispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity, socketId: "ListeningRPC" });
         };
         timer = setInterval(() => { void update().catch(console.error); }, 1000);
         await update();
