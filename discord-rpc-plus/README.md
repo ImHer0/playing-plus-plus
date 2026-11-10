@@ -50,7 +50,7 @@ Vencord: Settings > Vencord > Plugins > **SpicetifyRPC** settings. **Use customi
 | Details | First detail line; defaults to `{title}`; blank hides it |
 | Second line | Defaults to `{artist}`; blank hides it |
 | Show album artwork | Album cover as the large image |
-| Small image | None (default), or Custom image / GIF URL |
+| Small image | None (default), Current playlist, or Custom image / GIF URL |
 | Custom image HTTPS URL | Public direct HTTPS image URL |
 | Small image hover text | Tooltip for the custom small image |
 | Playback time | Toggle playback timestamps |
@@ -78,3 +78,9 @@ Vencord desktop builds and TypeScript checks pass. Verify current artwork, butto
 ## Support
 
 Optional: [Ko-fi](https://ko-fi.com/imher0), [PayPal](https://www.paypal.com/paypalme/ImHer0TM), [GitHub Sponsors](https://github.com/sponsors/ImHer0). The same links are in Spotify's SpicetifyRPC settings.
+
+### Playlist artwork and swapping images
+
+Select **Current playlist** to show the artwork of the Spotify playlist providing the playback context. Its name is the default hover text. Album, artist, radio, queue-only and other non-playlist contexts have no playlist image. If Spotify restricts playlist metadata, the image is omitted.
+
+Enable **Swap large and small images** to display the selected custom image/GIF or playlist artwork as the large image, and album artwork as the small image. Hover text follows each image. With no available selected image, the normal album artwork remains large. Disable Show album artwork to omit album art in either position. GIF animation depends on Discord support.

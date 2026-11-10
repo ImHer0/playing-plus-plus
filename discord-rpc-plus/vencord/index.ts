@@ -8,7 +8,8 @@ const settings = definePluginSettings({
     nameTemplate: { type: OptionType.STRING, description: "Activity name: {title}, {artist}, {album}. Add any custom text here.", default: "{title}" },
     detailsTemplate: { type: OptionType.STRING, description: "Details template (blank hides it)", default: "{title}" },
     stateTemplate: { type: OptionType.STRING, description: "Second line template (blank hides it)", default: "{artist}" },
-    smallImage: { type: OptionType.SELECT, description: "Small image", options: [{ label: "None", value: "none", default: true }, { label: "Custom image / GIF URL", value: "custom" }] },
+    smallImage: { type: OptionType.SELECT, description: "Small image", options: [{ label: "None", value: "none", default: true }, { label: "Current playlist", value: "playlist" }, { label: "Custom image / GIF URL", value: "custom" }] },
+    swapImages: { type: OptionType.BOOLEAN, description: "Swap the selected image and album cover (selected image large, album small)", default: false },
     smallImageUrl: { type: OptionType.STRING, description: "Custom small image HTTPS URL", default: "" },
     smallImageText: { type: OptionType.STRING, description: "Small image hover text", default: "" },
     showCover: { type: OptionType.BOOLEAN, description: "Show album artwork", default: true },
@@ -51,10 +52,14 @@ export default definePlugin({
                 timestamps: options.showTime !== false && data.start && data.end ? { start: data.start, end: data.end } : undefined,
                 assets: options.showCover !== false && data.cover ? { large_image: await image(data.cover), large_text: data.album } : {}
             };
-            const smallUrl = options.smallImage === "custom" ? options.smallImageUrl : undefined;
+            const smallUrl = options.smallImage === "custom" ? options.smallImageUrl : options.smallImage === "playlist" ? data.playlist?.image : undefined;
             if (typeof smallUrl === "string" && /^https:\/\//.test(smallUrl)) {
                 activity.assets.small_image = await image(smallUrl);
-                activity.assets.small_text = (options.smallImageText || "Custom image").slice(0, 128);
+                activity.assets.small_text = (options.smallImageText || (options.smallImage === "playlist" ? data.playlist?.name : "Custom image") || "Playlist").slice(0, 128);
+            }
+            if (options.swapImages && activity.assets.small_image) {
+                const { large_image, large_text, small_image, small_text } = activity.assets;
+                activity.assets = { large_image: small_image, large_text: small_text, small_image: large_image, small_text: large_text };
             }
             if (trackId && options.showButton !== false) {
                 activity.buttons = ["Play song"];

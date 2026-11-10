@@ -7,10 +7,10 @@
   let lastPost = 0;
   const post = (body) => { lastPost = Date.now(); return fetch(URL, { method: "POST", body: JSON.stringify(body) }).catch(() => {}); }; // bridge offline: ignore
 
-  const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, smallImage: "none", smallImageUrl: "", smallImageText: "", showTime: true, showButton: true };
+  const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, smallImage: "none", swapImages: false, smallImageUrl: "", smallImageText: "", showTime: true, showButton: true };
   let options;
   try { options = { ...defaults, ...JSON.parse(Spicetify.LocalStorage.get("discord-rpc-options") || "{}") }; } catch { options = { ...defaults }; }
-  if (options.smallImage !== "custom") options.smallImage = "none";
+  if (!["custom", "playlist"].includes(options.smallImage)) options.smallImage = "none";
   new Spicetify.Menu.Item("SpicetifyRPC settings", false, () => {
     const panel = document.createElement("div");
     const add = (label, key, choices) => {
@@ -27,7 +27,8 @@
     add("Activity label", "activityType", [["Playing",0],["Listening to",2],["Watching",3],["Competing in",5]]);
     add("Activity name", "nameTemplate"); add("Details", "detailsTemplate"); add("Second line", "stateTemplate");
     add("Show album artwork", "showCover");
-    add("Small image", "smallImage", [["None", "none"], ["Custom image / GIF", "custom"]]);
+    add("Small image", "smallImage", [["None", "none"], ["Current playlist", "playlist"], ["Custom image / GIF", "custom"]]);
+    add("Swap large and small images", "swapImages");
     add("Custom image HTTPS URL", "smallImageUrl"); add("Small image hover text", "smallImageText"); add("Playback time", "showTime"); add("Play song button", "showButton");
     const node = (tag, text = "", className = "") => { const element = document.createElement(tag); element.textContent = text; element.className = className; return element; };
     const support = node("footer", "", "pp-support");
@@ -49,7 +50,23 @@
     panel.append(support);
     Spicetify.PopupModal.display({ title: "SpicetifyRPC settings", content: panel });
   }).register();
+  let contextUri = "", playlist = {}, contextVersion = 0;
+  async function refreshPlaylist() {
+    const context = Spicetify.Player.data?.context;
+    const uri = context?.uri || context?.metadata?.uri || "";
+    if (uri === contextUri) return;
+    contextUri = uri; playlist = {};
+    const version = ++contextVersion;
+    const id = /^spotify:playlist:([a-zA-Z0-9]{22})$/.exec(uri)?.[1];
+    if (!id) return;
+    try {
+      const data = await Spicetify.CosmosAsync.get(`https://api.spotify.com/v1/playlists/${id}?fields=name,images`);
+      if (version !== contextVersion) return;
+      playlist = { name: data.name, image: data.images?.[0]?.url }; update();
+    } catch { /* No playlist artwork when Spotify restricts the lookup. */ }
+  }
   function update() {
+    void refreshPlaylist();
     const d = Spicetify.Player.data;
     const m = d?.item;
     if (!m || d.isPaused) return post({ clear: true });
@@ -57,7 +74,7 @@
     const img = m.images?.[0]?.url || m.metadata?.image_xlarge_url || m.metadata?.image_url || "";
     const id = img.split(":").pop();
     post({
-      options,
+      options, playlist,
       title: m.name,
       trackUri: m.uri || m.metadata?.uri || m.metadata?.track_uri,
       artist: (m.artists || []).map((a) => a.name).join(", "),

@@ -15,6 +15,7 @@ export async function start() {
                 const data = JSON.parse(body);
                 if (!data || typeof data !== "object") throw new Error("Invalid payload");
                 latest = data.clear ? null : {
+                    playlist: data.playlist && typeof data.playlist === "object" ? { name: String(data.playlist.name || "Playlist").slice(0,128), image: typeof data.playlist.image === "string" && /^https:\/\//.test(data.playlist.image) ? data.playlist.image : undefined } : {},
                     options: data.options && typeof data.options === "object" ? data.options : {},
                     title: typeof data.title === "string" ? data.title.slice(0, 128) : "Unknown song",
                     artist: typeof data.artist === "string" ? data.artist.slice(0, 128) : "Unknown artist",

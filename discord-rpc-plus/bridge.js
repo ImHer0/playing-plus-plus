@@ -52,8 +52,12 @@ http.createServer((req, res) => {
         if (o.showTime !== false && p.start && p.end) a.timestamps = { start: Math.floor(+p.start), end: Math.floor(+p.end) };
         const cover = typeof p.cover === "string" && p.cover.startsWith("https://i.scdn.co/") ? p.cover : undefined;
         a.assets = o.showCover !== false && cover ? { large_image: cover, large_text: str(p.album,128) } : {};
-        const smallUrl = o.smallImage === "custom" ? o.smallImageUrl : undefined;
-        if (typeof smallUrl === "string" && /^https:\/\//.test(smallUrl)) { a.assets.small_image = smallUrl; a.assets.small_text = str(o.smallImageText || "Custom image", 128); }
+        const smallUrl = o.smallImage === "custom" ? o.smallImageUrl : o.smallImage === "playlist" ? p.playlist?.image : undefined;
+        if (typeof smallUrl === "string" && /^https:\/\//.test(smallUrl)) { a.assets.small_image = smallUrl; a.assets.small_text = str(o.smallImageText || (o.smallImage === "playlist" ? p.playlist?.name : "Custom image") || "Playlist", 128); }
+        if (o.swapImages && a.assets.small_image) {
+          const { large_image, large_text, small_image, small_text } = a.assets;
+          a.assets = { large_image: small_image, large_text: small_text, small_image: large_image, small_text: large_text };
+        }
         const trackId = /^spotify:track:([a-zA-Z0-9]{22})$/.exec(p.trackUri || "")?.[1];
         if (trackId && o.showButton !== false) a.buttons = [{ label: "Play song", url: `https://open.spotify.com/track/${trackId}` }];
         send(a);
