@@ -23,7 +23,7 @@ function clear() {
 }
 export default definePlugin({
     name: "SpicetifyRPC",
-    description: "Receive listening activity directly from the Discord RPC+ Spicetify extension. Desktop only.",
+    description: "⚠️REQUIRES SPICETIFY⚠️ Share Spotify listening activity with the SpicetifyRPC extension. Desktop only.",
     settings,
     patches: [{
         find: ".USER_PROFILE_ACTIVITY_BUTTONS),",
