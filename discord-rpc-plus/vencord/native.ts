@@ -35,5 +35,11 @@ export async function start() {
     });
     server = instance;
 }
-export function snapshot() { return { activity: Date.now() - updated < 45000 ? latest : null, updated }; }
+export function snapshot() {
+    const now = Date.now();
+    // Background Spotify timers can be throttled beyond the heartbeat interval.
+    const trackEnd = typeof latest?.end === "number" ? latest.end : 0;
+    const expires = Math.max(updated + 120000, Math.min(trackEnd + 90000, updated + 86400000));
+    return { activity: now < expires ? latest : null, updated };
+}
 export function stop() { server?.close(); server = undefined; latest = null; updated = 0; }

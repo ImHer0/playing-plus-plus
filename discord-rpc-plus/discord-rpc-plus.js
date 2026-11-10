@@ -4,7 +4,8 @@
 (function DiscordRpcPlus() {
   if (!Spicetify?.Player?.data) return setTimeout(DiscordRpcPlus, 300);
   const URL = "http://127.0.0.1:6473/";
-  const post = (body) => fetch(URL, { method: "POST", body: JSON.stringify(body) }).catch(() => {}); // bridge offline: ignore
+  let lastPost = 0;
+  const post = (body) => { lastPost = Date.now(); return fetch(URL, { method: "POST", body: JSON.stringify(body) }).catch(() => {}); }; // bridge offline: ignore
 
   const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, smallImage: "none", smallImageUrl: "", smallImageText: "", showTime: true, showButton: true };
   let options;
@@ -68,7 +69,7 @@
 
   Spicetify.Player.addEventListener("songchange", update);
   Spicetify.Player.addEventListener("onplaypause", update);
-  Spicetify.Player.addEventListener("onprogress", (() => { let last = 0; return () => { const p = Spicetify.Player.getProgress(); if (Math.abs(p - last - 1000) > 3000 && last) update(); last = p; }; })()); // re-sync after seeks
+  Spicetify.Player.addEventListener("onprogress", (() => { let last = 0; return () => { const p = Spicetify.Player.getProgress(); if ((Math.abs(p - last - 1000) > 3000 && last) || Date.now() - lastPost >= 15000) update(); last = p; }; })()); // re-sync after seeks
   setInterval(update, 15000); // heartbeat and reconnect after Discord starts
   update();
 })();

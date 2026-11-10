@@ -64,7 +64,7 @@ Small artwork is independent of the album cover. Spotify profile fetching is not
 
 - Pause clears the activity. Song changes and seeks update it.
 - The extension sends a heartbeat every 15 seconds to reconnect after Discord starts.
-- The Vencord receiver clears stale activity after 45 seconds without updates.
+- The Vencord receiver tolerates background timer throttling: activity remains valid through the expected song end plus 90 seconds, with a minimum two-minute heartbeat grace. Pause clears it immediately; if Spotify closes abruptly, the last song can remain visible until that grace expires.
 - Enable Discord activity sharing if your activity is hidden.
 - Only Spotify track URIs produce a Play song link; local files have no Spotify track link.
 - Discord normally hides buttons on your own profile. The companion includes the same visibility patch used by Vencord CustomRPC. Check a full profile from another account when verifying public visibility.
