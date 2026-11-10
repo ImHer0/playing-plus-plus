@@ -28,3 +28,11 @@ The `vencord` folder contains the desktop-only SpicetifyRPC userplugin. Discord 
 5. Play music. The extension reconnects within 15 seconds. Pausing clears the activity; losing Spotify clears it after 45 seconds.
 
 This is a custom userplugin, not an official Vencord plugin or a stock-build download. Browser Vencord is unsupported. Disable the old bridge/autostart before enabling this plugin. Desktop build and TypeScript checks pass. Live Discord validation is pending.
+
+## Customization
+
+Open **Discord RPC+ settings** from Spotify's profile menu. Templates support `{title}`, `{artist}`, and `{album}`; blank detail lines are hidden. Choose Playing, Listening to, Watching or Competing in, toggle timestamps and the Play song button, and move album art to the small image. Discord controls the fixed activity label; arbitrary text is supported in the name template.
+
+Vencord: open Settings > Vencord > Plugins > SpicetifyRPC settings. Disable **Use customization from Spicetify** to use Vencord overrides. Otherwise the Spotify settings apply to both the Vencord receiver and standalone bridge.
+
+The Play song button opens the current track on Spotify. Final button visibility and artwork need live profile validation from another account.
