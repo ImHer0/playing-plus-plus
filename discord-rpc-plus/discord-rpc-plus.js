@@ -6,7 +6,7 @@
   const URL = "http://127.0.0.1:6473/";
   const post = (body) => fetch(URL, { method: "POST", body: JSON.stringify(body) }).catch(() => {}); // bridge offline: ignore
 
-  const defaults = { activityType: 0, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", coverSmall: false, showTime: true, showButton: true };
+  const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, coverSmall: false, showTime: true, showButton: true };
   let options;
   try { options = { ...defaults, ...JSON.parse(Spicetify.LocalStorage.get("discord-rpc-options") || "{}") }; } catch { options = { ...defaults }; }
   new Spicetify.Menu.Item("Discord RPC+ settings", false, () => {
@@ -24,6 +24,7 @@
     const help = document.createElement("p"); help.textContent = "Templates: {title}, {artist}, {album}. Blank details hide that line. Discord controls the activity label; custom text belongs in the name template. Vencord uses these settings unless overrides are enabled."; panel.append(help);
     add("Activity label", "activityType", [["Playing",0],["Listening to",2],["Watching",3],["Competing in",5]]);
     add("Activity name", "nameTemplate"); add("Details", "detailsTemplate"); add("Second line", "stateTemplate");
+    add("Show album artwork", "showCover");
     add("Album cover as small image", "coverSmall"); add("Playback time", "showTime"); add("Play song button", "showButton");
     Spicetify.PopupModal.display({ title: "Discord RPC+ settings", content: panel });
   }).register();

@@ -4,11 +4,12 @@ import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
 const Native = VencordNative.pluginHelpers.SpicetifyRPC as PluginNative<typeof import("./native")>;
 const settings = definePluginSettings({
     useSpotifySettings: { type: OptionType.BOOLEAN, description: "Use customization from Spicetify instead of these overrides", default: true },
-    activityType: { type: OptionType.SELECT, description: "Discord activity label", options: [{label:"Playing",value:0,default:true},{label:"Listening to",value:2},{label:"Watching",value:3},{label:"Competing in",value:5}] },
+    activityType: { type: OptionType.SELECT, description: "Discord activity label", options: [{label:"Playing",value:0},{label:"Listening to",value:2,default:true},{label:"Watching",value:3},{label:"Competing in",value:5}] },
     nameTemplate: { type: OptionType.STRING, description: "Activity name: {title}, {artist}, {album}. Add any custom text here.", default: "{title}" },
     detailsTemplate: { type: OptionType.STRING, description: "Details template (blank hides it)", default: "{title}" },
     stateTemplate: { type: OptionType.STRING, description: "Second line template (blank hides it)", default: "{artist}" },
-    coverSmall: { type: OptionType.BOOLEAN, description: "Use album cover as small image and logo as large image", default: false },
+    coverSmall: { type: OptionType.BOOLEAN, description: "Use album cover as small image", default: false },
+    showCover: { type: OptionType.BOOLEAN, description: "Show album artwork", default: true },
     showTime: { type: OptionType.BOOLEAN, description: "Show playback time", default: true },
     showButton: { type: OptionType.BOOLEAN, description: "Show Play song button", default: true }
 });
@@ -22,6 +23,10 @@ export default definePlugin({
     name: "SpicetifyRPC",
     description: "Receive listening activity directly from the Discord RPC+ Spicetify extension. Desktop only.",
     settings,
+    patches: [{
+        find: ".USER_PROFILE_ACTIVITY_BUTTONS),",
+        replacement: { match: /.getId\(\)===\i.id/, replace: "$& && false" }
+    }],
     authors: [{ name: "ImHer0", id: 0n }],
     async start() {
         await Native.start();
@@ -37,13 +42,12 @@ export default definePlugin({
             const options = settings.store.useSpotifySettings ? (data.options || {}) : settings.store;
             const template = (value: string) => value.replace(/\{(title|artist|album)\}/g, (_, k) => data[k] || "").slice(0, 128);
             const image = async (url: string) => (await ApplicationAssetUtils.fetchAssetIds("1461099412649545850", [url]))[0];
-            const logo = "https://raw.githubusercontent.com/ImHer0/spicetify-extensions/main/assets/discord-rpc-logo.png";
             const activity: any = {
-                application_id: "1461099412649545850", name: template(options.nameTemplate ?? "{title}"), type: Number(options.activityType ?? 0),
+                application_id: "1461099412649545850", name: template(options.nameTemplate ?? "{title}"), type: Number(options.activityType ?? 2),
                 details: template(options.detailsTemplate ?? "{title}") || undefined,
                 state: template(options.stateTemplate ?? "{artist}") || undefined,
                 timestamps: options.showTime !== false && data.start && data.end ? { start: data.start, end: data.end } : undefined,
-                assets: options.coverSmall ? { large_image: await image(logo), small_image: data.cover ? await image(data.cover) : undefined, small_text: data.album } : { large_image: await image(data.cover || logo), large_text: data.album, small_image: await image(logo), small_text: "Spicetify" }
+                assets: options.showCover !== false && data.cover ? (options.coverSmall ? { small_image: await image(data.cover), small_text: data.album } : { large_image: await image(data.cover), large_text: data.album }) : undefined
             };
             if (trackId && options.showButton !== false) {
                 activity.buttons = ["Play song"];

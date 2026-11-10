@@ -46,13 +46,12 @@ http.createServer((req, res) => {
         const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : undefined);
         const o = p.options || {};
         const template = value => value.replace(/\{(title|artist|album)\}/g, (_, k) => str(p[k], 128) || "").slice(0,128);
-        const logo = "https://raw.githubusercontent.com/ImHer0/spicetify-extensions/main/assets/discord-rpc-logo.png";
-        const a = { name: template(typeof o.nameTemplate === "string" ? o.nameTemplate : "{title}"), type: [0,2,3,5].includes(o.activityType) ? o.activityType : 0,
+        const a = { name: template(typeof o.nameTemplate === "string" ? o.nameTemplate : "{title}"), type: [0,2,3,5].includes(o.activityType) ? o.activityType : 2,
           details: template(typeof o.detailsTemplate === "string" ? o.detailsTemplate : "{title}") || undefined,
           state: template(typeof o.stateTemplate === "string" ? o.stateTemplate : "{artist}") || undefined };
         if (o.showTime !== false && p.start && p.end) a.timestamps = { start: Math.floor(+p.start), end: Math.floor(+p.end) };
         const cover = typeof p.cover === "string" && p.cover.startsWith("https://i.scdn.co/") ? p.cover : undefined;
-        a.assets = o.coverSmall ? { large_image: logo, small_image: cover, small_text: str(p.album,128) } : { large_image: cover || logo, small_image: logo, large_text: str(p.album,128) };
+        if (o.showCover !== false && cover) a.assets = o.coverSmall ? { small_image: cover, small_text: str(p.album,128) } : { large_image: cover, large_text: str(p.album,128) };
         const trackId = /^spotify:track:([a-zA-Z0-9]{22})$/.exec(p.trackUri || "")?.[1];
         if (trackId && o.showButton !== false) a.buttons = [{ label: "Play song", url: `https://open.spotify.com/track/${trackId}` }];
         send(a);
