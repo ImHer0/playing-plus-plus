@@ -2,7 +2,7 @@
 (() => {
   "use strict";
   const SETTINGS_KEY = "playing-plus-plus:settings";
-  const settings = { date: true, genres: true, dateFormat: "long", customDateFormat: "DD/MM/YYYY", maxGenres: 0, hiddenGenres: "", hideUnavailableGenres: false };
+  const settings = { date: true, genres: true, tags: true, dateFormat: "long", customDateFormat: "DD/MM/YYYY", maxGenres: 0, hiddenGenres: "", hideUnavailableGenres: false };
   const dateFormats = [["long", "January 31, 2024"], ["short", "Jan 31, 2024"], ["dmy", "31/01/2024"], ["mdy", "01/31/2024"], ["iso", "2024-01-31"], ["custom", "Custom"]];
   let lastState;
   const cache = new Map();
@@ -317,7 +317,8 @@
     const content = node("div", "", "pp-settings");
     for (const [key, title, description] of [
       ["date", "Date Toggle", "Show the release date beside the song title."],
-      ["genres", "Genres Toggle", "Show clickable genres beside the artists or audio quality."]
+      ["genres", "Genres Toggle", "Show clickable genres beside the artists or audio quality."],
+      ["tags", "Track Tags", "Show liked, downloaded and explicit icons in the now playing view."]
     ]) {
       const row = node("div", "", "pp-setting-row");
       const text = node("div", "", "pp-setting-text");
@@ -331,6 +332,7 @@
         settings[key] = toggle.checked;
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Session settings still work. */ }
         applyVisibility();
+        if (key === "tags") showTags();
       };
       if (key === "date") {
         const controls = node("div", "", "pp-date-controls");
@@ -439,7 +441,7 @@
     render({ ...state, message: "Loading song details…" });
     let track;
     try { track = await spotify(`tracks/${trackId}`); }
-    catch (error) { console.warn("[Playing++] Track lookup failed", error); }
+    catch (error) { console.debug("[Playing++] Track lookup failed", error); }
     if (!current()) return;
     state.date = track?.album?.release_date || item.album?.release_date || item.metadata?.release_date || item.metadata?.album_year || item.metadata?.year;
     // The desktop metadata endpoint also works when the Web API is unavailable.
@@ -594,6 +596,7 @@
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
       if (typeof saved?.date === "boolean") settings.date = saved.date;
       if (typeof saved?.genres === "boolean") settings.genres = saved.genres;
+      if (typeof saved?.tags === "boolean") settings.tags = saved.tags;
       if ([0, 1, 2, 3, 4, 5, 8, 10].includes(saved?.maxGenres)) settings.maxGenres = saved.maxGenres;
       if (typeof saved?.hiddenGenres === "string") settings.hiddenGenres = saved.hiddenGenres.slice(0, 500);
       if (typeof saved?.hideUnavailableGenres === "boolean") settings.hideUnavailableGenres = saved.hideUnavailableGenres;
@@ -603,11 +606,15 @@
     applyVisibility();
     const menuIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M1 2Q1 1 2 1.5L11.5 6.5Q12.5 7 11.5 7.5L2 12.5Q1 13 1 12Z"/><path d="M8 11H9.2V12.2H10.4V13.4H9.2V14.6H8V13.4H6.8V12.2H8ZM12.8 11H14V12.2H15.2V13.4H14V14.6H12.8V13.4H11.6V12.2H12.8Z" style="stroke:currentColor;stroke-width:.3;stroke-linejoin:round"/></svg>';
     new api.Menu.Item("Playing++", false, openSettings, menuIcon).register();
-    const refresh = () => update().catch(error => {
+    const refresh = () => (showTags(), update()).catch(error => {
       console.error("[Playing++]", error);
       render({ title: "Song details unavailable", message: "Try another song or reload Spotify." });
     });
     api.Player.addEventListener("songchange", refresh);
+    if (typeof MutationObserver !== "undefined") new MutationObserver(() => { // Spotify re-renders the widget and wipes the tags
+      if (tagsExpected && !document.querySelector(".pp-tags")) { clearTimeout(tagsTimer); tagsTimer = setTimeout(showTags, 200); }
+    }).observe(document.body, { childList: true, subtree: true });
+    showTags();
     api.Player.addEventListener("onplaypause", refresh);
     refresh();
     // The wrapper initially assigns Player.data without a songchange event.
@@ -620,6 +627,58 @@
       };
       setTimeout(waitForInitialTrack, 500);
     }
+  }
+
+  // Track tags: liked / downloaded / explicit icons beside the now playing title.
+  let tagsExpected = false, tagsTimer;
+  function showTags() { return renderTags().catch(() => {}); } // tags are cosmetic: never break the rest
+  async function renderTags() {
+    document.querySelectorAll(".pp-tags").forEach(e => e.remove());
+    tagsExpected = false;
+    const item = api.Player.data?.item;
+    if (!settings.tags || !item) return;
+    const tags = [];
+    if (item.metadata?.["collection.in_collection"] === "true") tags.push(["liked", "This song is in your liked songs"]);
+    try {
+      const trackId = item.uri.split(":")[2];
+      const offline = await api.Platform.OfflineAPI._offline.getItems(0, 10000);
+      if (offline?.items?.some(song => song?.uri?.includes(trackId))) tags.push(["downloaded", "This song is downloaded"]);
+    } catch { /* Offline API unavailable: skip that tag. */ }
+    if (item.explicit || item.metadata?.is_explicit === "true") tags.push(["explicit", "Explicit"]);
+    if (item !== api.Player.data?.item || !settings.tags) return; // song changed or toggled while awaiting
+    // Same anchor mount() uses for the date, so it exists whenever the date renders.
+    const widget = document.querySelector('[data-testid="now-playing-widget-v2"], [data-testid="now-playing-widget"], .main-nowPlayingWidget-nowPlaying');
+    const container = widget && (widget.querySelector('[data-testid="now-playing-widget-v2-byline"], .main-trackInfo-artists'));
+    if (!tags.length || !container) return;
+    tagsExpected = true;
+    const box = node("div", "", "pp-tags");
+    box.style.cssText = "display:inline-flex;gap:4px;margin-right:6px;vertical-align:middle;font-size:inherit;font-weight:600;color:var(--spice-subtext,#b3b3b3)";
+    box.style.fontSize = getComputedStyle(container.querySelector("a") || container).fontSize;
+    const paths = {
+      liked: "M8 14.2 1.8 8A4 4 0 0 1 8 3a4 4 0 0 1 6.2 5Z",
+      downloaded: "M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm.75 3v6.19l2.22-2.22 1.06 1.06L8 12.06 3.97 8.03l1.06-1.06 2.22 2.22V3Z",
+      explicit: "M2 0h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2Zm3 3v10h6v-2H7V9h3V7H7V5h4V3Z"
+    };
+    for (const [kind, title] of tags) {
+      const tag = node("span", "");
+      tag.title = title;
+      tag.setAttribute("role", "img");
+      tag.setAttribute("aria-label", title);
+      tag.style.cssText = "display:inline-flex;align-items:center;" + (kind === "explicit" ? "" : "color:var(--spice-button,#1ed760)");
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 16 16");
+      svg.setAttribute("width", "1em");
+      svg.setAttribute("height", "1em");
+      svg.setAttribute("aria-hidden", "true");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("fill", "currentColor");
+      path.setAttribute("fill-rule", "evenodd");
+      path.setAttribute("d", paths[kind]);
+      svg.append(path);
+      tag.append(svg);
+      box.append(tag);
+    }
+    container.prepend(box);
   }
 
   // Pure helpers are exported only for Node's built-in test runner.

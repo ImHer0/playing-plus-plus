@@ -4,11 +4,23 @@
     "description": "Release dates and clickable genres in your now-playing bar, with independent toggles and hover scrolling.",
     "preview": "assets/preview.gif",
     "main": "playing-plus-plus.js",
-    "readme": "README.md",
+    "readme": "PLAYING.md",
     "tags": [
       "now playing",
       "release date",
       "genres"
+    ]
+  },
+  {
+    "name": "Discord RPC+",
+    "description": "Share your Spotify listening activity on Discord with artwork and a Listen to song button. Requires a local Node.js bridge.",
+    "preview": "assets/logo.png",
+    "main": "discord-rpc-plus/discord-rpc-plus.js",
+    "readme": "discord-rpc-plus/README.md",
+    "tags": [
+      "discord",
+      "rich presence",
+      "now playing"
     ]
   }
 ]

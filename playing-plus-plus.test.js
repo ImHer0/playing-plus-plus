@@ -393,7 +393,7 @@ test("date format settings update playback immediately and survive reload", asyn
 test("settings include the donation footer and no release-time notice", () => {
   const app = harness(() => Promise.resolve({}));
   app.openSettings();
-  const footer = app.modal.content.children[2];
+  const footer = app.modal.content.children[3];
   assert.match(footer.text, /Support Playing\+\+/);
   const links = footer.children[1].children;
   assert.deepEqual(links.map(link => link.href), ["https://ko-fi.com/imher0", "https://www.paypal.com/paypalme/ImHer0TM", "https://github.com/sponsors/ImHer0"]);
