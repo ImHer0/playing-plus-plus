@@ -39,10 +39,9 @@ The Play song button opens the current track on Spotify. Final button visibility
 
 ### Small image options
 
-The large image remains the album cover when **Show album artwork** is enabled. The independent **Small image** dropdown offers:
+The large image remains the album cover when **Show album artwork** is enabled.
 
-- **Spotify profile** (default): your Spotify avatar, with your display name on hover. If the profile has no avatar or Spotify cannot provide it, the small image is omitted.
+- **None** (default): no small image.
 - **Custom image / GIF URL**: a publicly accessible direct HTTPS image URL. Discord resolves and caches it; GIF animation depends on Discord support and may display as a still image.
-- **None**: no small image.
 
-**Small image hover text** overrides the default profile name. Leave it blank to use your Spotify display name. These options exist in both Spotify and Vencord. In Vencord, enable Use customization from Spicetify to share the Spotify settings, or disable it for independent overrides. The old small album-art option is retired.
+**Small image hover text** sets the tooltip. These options exist in both Spotify and Vencord. In Vencord, enable Use customization from Spicetify to share Spotify settings, or disable it for independent overrides. Spotify profile fetching is not used.
