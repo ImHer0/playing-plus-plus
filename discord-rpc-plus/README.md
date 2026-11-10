@@ -92,3 +92,7 @@ The Vencord Source dropdown offers Spicetify, Windows media, or Spicetify with W
 Windows mode currently provides text and timing, not native thumbnail artwork or service-specific song URLs. Custom image/GIF options remain available. Spotify mode retains exact Spotify song links, album artwork and playlist-context metadata.
 
 Spicetify now sends playlist name, URI, description and artwork when available, using client playback context as a fallback to Spotify's API. Templates additionally support `{playlist}` and `{source}`. Playlist artwork still depends on metadata available in the installed Spotify version; missing images are omitted.
+
+### Windows-first settings
+
+Windows media is the default Vencord source and needs no Spicetify extension. In Windows mode the Spotify settings override, playlist artwork, album-cover, image-swap and Spotify song-button controls are hidden. Generic text templates, activity label, custom small image/GIF and playback timing remain available. Select Spicetify or automatic fallback to expose the Spotify enrichment controls. The dedicated playlist-artwork toggle is available only with those modes.
