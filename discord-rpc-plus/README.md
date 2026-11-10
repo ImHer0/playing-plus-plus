@@ -1,47 +1,80 @@
-# Discord RPC+
+# SpicetifyRPC
 
-Shows your currently playing Spotify song on Discord, with artist, artwork, playback timestamps and a **Listen to song** button linking to Spotify.
+![SpicetifyRPC](../assets/discord-rpc-logo.png)
 
-## Install
+Share the song playing in Spotify on Discord: song title, artist, album artwork, playback time, and a **Play song** button linking to Spotify.
 
-1. Install Discord RPC+ from Spicetify Marketplace, or copy `discord-rpc-plus.js` into your Spicetify Extensions directory and enable it with `spicetify config extensions discord-rpc-plus.js` then `spicetify apply`.
-2. Install Node.js and download `bridge.js` from this folder.
-3. Run `node bridge.js` and keep it running alongside the Discord desktop app and Spotify. No npm dependencies are required.
-4. Play a song. Enable activity sharing in Discord if necessary.
+**Vencord availability:** the companion works as a custom desktop plugin and is not included in official Vencord yet. An official inclusion submission is being prepared. Until accepted, use a custom Vencord build or the standalone bridge below. This is not an official Vencord release.
 
-The bridge listens on 127.0.0.1:6473. Pausing clears the activity. Only Spotify track URIs produce the Listen button. Local files do not have a Spotify track link.
+## Install the Spotify extension
 
-For a custom Discord application, run `node bridge.js YOUR_APPLICATION_ID`.
+Install **SpicetifyRPC** from Spicetify Marketplace (indexing may take time), or copy `discord-rpc-plus.js` into your Spicetify Extensions folder and run:
 
-## Troubleshooting
+```sh
+spicetify config extensions discord-rpc-plus.js
+spicetify apply
+```
 
-The bridge should print `Discord connected as ...`. If it does not, start the Discord desktop app. Restart the bridge after updating it. Discord may render your own activity buttons differently from what other users see.
+The existing filename is retained for compatibility. Choose one receiver below; Marketplace installs only the Spotify extension.
 
-## Vencord companion (no separate Node runtime)
+## Option 1: Vencord companion
 
-The `vencord` folder contains the desktop-only SpicetifyRPC userplugin. Discord hosts its local receiver; do not run bridge.js at the same time because both use port 6473.
+No separate Node process is needed at runtime. Custom Vencord builds require development tools.
 
-1. Follow https://docs.vencord.dev/installing/ to prepare a Vencord source build. Building requires the documented development tools; running the resulting plugin does not require a separate Node process.
-2. Copy `vencord/index.ts` and `vencord/native.ts` into `src/userplugins/spicetifyRPC.desktop/` in that checkout.
-3. Rebuild and inject Vencord following its instructions, then fully restart Discord.
-4. Enable SpicetifyRPC under Vencord Plugins and install/enable the Discord RPC+ Spicetify extension.
-5. Play music. The extension reconnects within 15 seconds. Pausing clears the activity; losing Spotify clears it after 45 seconds.
+1. Follow [Vencord's source-build guide](https://docs.vencord.dev/installing/).
+2. Copy `vencord/index.ts` and `vencord/native.ts` into `src/userplugins/spicetifyRPC.desktop/`.
+3. Build with `pnpm build --dev`, then use `pnpm inject` to install your build. Fully restart Discord.
+4. Enable **SpicetifyRPC** in Vencord Plugins.
+5. Enable the Spotify extension and play music.
 
-This is a custom userplugin, not an official Vencord plugin or a stock-build download. Browser Vencord is unsupported. Disable the old bridge/autostart before enabling this plugin. Desktop build and TypeScript checks pass. Live Discord validation is pending.
+Use desktop Discord. Browser Vencord is unsupported. Stop the standalone bridge and disable its autostart before enabling the companion: both use `127.0.0.1:6473`.
 
-## Customization
+## Option 2: standalone bridge
 
-Open **Discord RPC+ settings** from Spotify's profile menu. Templates support `{title}`, `{artist}`, and `{album}`; blank detail lines are hidden. Choose Playing, Listening to, Watching or Competing in, toggle timestamps and the Play song button, and move album art to the small image. Discord controls the fixed activity label; arbitrary text is supported in the name template.
+1. Install Node.js and download `bridge.js`.
+2. Run `node bridge.js` alongside desktop Discord and Spotify. No npm dependencies are required.
+3. The log should show `Discord connected as ...`.
 
-Vencord: open Settings > Vencord > Plugins > SpicetifyRPC settings. Disable **Use customization from Spicetify** to use Vencord overrides. Otherwise the Spotify settings apply to both the Vencord receiver and standalone bridge.
+To use your own Discord application: `node bridge.js YOUR_APPLICATION_ID`.
 
-The Play song button opens the current track on Spotify. Final button visibility and artwork need live profile validation from another account.
+## Settings
 
-### Small image options
+Spotify: profile menu > **SpicetifyRPC settings**.
 
-The large image remains the album cover when **Show album artwork** is enabled.
+Vencord: Settings > Vencord > Plugins > **SpicetifyRPC** settings. **Use customization from Spicetify** is enabled by default. Disable it to use independent Vencord overrides.
 
-- **None** (default): no small image.
-- **Custom image / GIF URL**: a publicly accessible direct HTTPS image URL. Discord resolves and caches it; GIF animation depends on Discord support and may display as a still image.
+| Setting | Behaviour |
+| --- | --- |
+| Activity label | Listening to (default), Playing, Watching, or Competing in |
+| Activity name | Text after the Discord label; defaults to `{title}` |
+| Details | First detail line; defaults to `{title}`; blank hides it |
+| Second line | Defaults to `{artist}`; blank hides it |
+| Show album artwork | Album cover as the large image |
+| Small image | None (default), or Custom image / GIF URL |
+| Custom image HTTPS URL | Public direct HTTPS image URL |
+| Small image hover text | Tooltip for the custom small image |
+| Playback time | Toggle playback timestamps |
+| Play song button | Open the current track on Spotify |
 
-**Small image hover text** sets the tooltip. These options exist in both Spotify and Vencord. In Vencord, enable Use customization from Spicetify to share Spotify settings, or disable it for independent overrides. Spotify profile fetching is not used.
+Text templates support `{title}`, `{artist}`, and `{album}`. Example: `Enjoying {title} by {artist}`. Discord controls the fixed activity label; arbitrary text belongs in the activity name or detail templates.
+
+Small artwork is independent of the album cover. Spotify profile fetching is not used. GIF rendering and animation depend on Discord's asset handling and caching; a GIF may appear as a still image. The project logo is used on GitHub and Marketplace, not in Discord activity.
+
+## Behaviour and troubleshooting
+
+- Pause clears the activity. Song changes and seeks update it.
+- The extension sends a heartbeat every 15 seconds to reconnect after Discord starts.
+- The Vencord receiver clears stale activity after 45 seconds without updates.
+- Enable Discord activity sharing if your activity is hidden.
+- Only Spotify track URIs produce a Play song link; local files have no Spotify track link.
+- Discord normally hides buttons on your own profile. The companion includes the same visibility patch used by Vencord CustomRPC. Check a full profile from another account when verifying public visibility.
+- A port-in-use error usually means both receivers are running. Use only one.
+- Fully restart Discord after updating native plugin code.
+
+## Development and submission
+
+Vencord desktop builds and TypeScript checks pass. Verify current artwork, button navigation and public profile visibility live before submitting. See [submission notes](vencord/SUBMISSION.md). Replace the placeholder author Discord ID before upstream submission. No upstream PR has been created by this project tooling.
+
+## Support
+
+Optional: [Ko-fi](https://ko-fi.com/imher0), [PayPal](https://www.paypal.com/paypalme/ImHer0TM), [GitHub Sponsors](https://github.com/sponsors/ImHer0). The same links are in Spotify's SpicetifyRPC settings.

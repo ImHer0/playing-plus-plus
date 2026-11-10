@@ -12,7 +12,7 @@
     ]
   },
   {
-    "name": "Discord RPC+",
+    "name": "SpicetifyRPC",
     "description": "Share your Spotify listening activity on Discord with artwork and a Listen to song button. Requires a local Node.js bridge.",
     "preview": "assets/discord-rpc-logo.png",
     "main": "discord-rpc-plus/discord-rpc-plus.js",

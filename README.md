@@ -7,9 +7,9 @@ Two independent extensions by ImHer0.
 | Extension | Features | Setup |
 | --- | --- | --- |
 | Playing++ | Release dates, clickable genres, liked/downloaded/explicit icons beside the artist | [Playing++ guide](PLAYING.md) |
-| Discord RPC+ | Song, artist, artwork, progress and a Listen to song button on Discord | [Discord RPC+ guide](discord-rpc-plus/README.md) |
+| SpicetifyRPC | Song, artist, artwork, progress and a Play song button on Discord | [SpicetifyRPC guide](discord-rpc-plus/README.md) |
 
-Install either extension from Spicetify Marketplace. Discord RPC+ also requires the local Node.js bridge; Marketplace does not install or launch that bridge.
+Install either extension from Spicetify Marketplace. SpicetifyRPC requires either its working custom Vencord companion or the standalone Node.js bridge. The companion is not yet included in official Vencord; official inclusion is being prepared. Marketplace installs only the Spotify extension.
 
 ## Development
 
