@@ -29,7 +29,7 @@ export default definePlugin({
         find: ".USER_PROFILE_ACTIVITY_BUTTONS),",
         replacement: { match: /.getId\(\)===\i.id/, replace: "$& && false" }
     }],
-    authors: [{ name: "ImHer0", id: 0n }],
+    authors: [{ name: "ImHer0", id: 1401294711041429679n }],
     async start() {
         await Native.start();
         active = true;

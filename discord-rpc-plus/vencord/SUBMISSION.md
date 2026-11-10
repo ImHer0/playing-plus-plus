@@ -8,6 +8,6 @@ Install the custom build through Vencord's documented source-build installer (`p
 
 Validation completed: pnpm build --dev, pnpm test:ts, local HTTP receiver tests (valid song, clear, rejected malformed JSON, unsupported method, artwork URL filtering).
 
-Before submission: replace the placeholder author Discord ID (0n) with your actual Discord user ID. Test live activity, artwork, Play song button from another account, pause, resume, seek, Discord restart and plugin disable. Current live-profile validation is pending. This is a development build, not an official Vencord release. No upstream PR has been opened.
+Before submission: author Discord ID is set to `1401294711041429679`. Test live activity, artwork, Play song button from another account, pause, resume, seek, Discord restart and plugin disable. Current live-profile validation is pending. This is a development build, not an official Vencord release. No upstream PR has been opened.
 
 The plugin uses Discord's embedded native environment and requires no separate Node process at runtime. Vencord source builds still require development tooling.

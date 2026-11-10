@@ -73,7 +73,7 @@ Small artwork is independent of the album cover. Spotify profile fetching is not
 
 ## Development and submission
 
-Vencord desktop builds and TypeScript checks pass. Verify current artwork, button navigation and public profile visibility live before submitting. See [submission notes](vencord/SUBMISSION.md). Replace the placeholder author Discord ID before upstream submission. No upstream PR has been created by this project tooling.
+Vencord desktop builds and TypeScript checks pass. Verify current artwork, button navigation and public profile visibility live before submitting. See [submission notes](vencord/SUBMISSION.md). Author Discord ID: `1401294711041429679`. No upstream PR has been created by this project tooling.
 
 ## Support
 
