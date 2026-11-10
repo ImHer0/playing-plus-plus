@@ -1,6 +1,6 @@
 import { definePluginSettings } from "@api/Settings";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
-import { FluxDispatcher } from "@webpack/common";
+import { ApplicationAssetUtils, FluxDispatcher } from "@webpack/common";
 const Native = VencordNative.pluginHelpers.SpicetifyRPC as PluginNative<typeof import("./native")>;
 const settings = definePluginSettings({
     useSpotifySettings: { type: OptionType.BOOLEAN, description: "Use customization from Spicetify instead of these overrides", default: true },
@@ -36,14 +36,14 @@ export default definePlugin({
             const trackId = /^spotify:track:([a-zA-Z0-9]{22})$/.exec(data.trackUri)?.[1];
             const options = settings.store.useSpotifySettings ? (data.options || {}) : settings.store;
             const template = (value: string) => value.replace(/\{(title|artist|album)\}/g, (_, k) => data[k] || "").slice(0, 128);
-            const image = (url: string) => "mp:" + url.replace("https://", "");
+            const image = async (url: string) => (await ApplicationAssetUtils.fetchAssetIds("1461099412649545850", [url]))[0];
             const logo = "https://raw.githubusercontent.com/ImHer0/spicetify-extensions/main/assets/discord-rpc-logo.png";
             const activity: any = {
                 application_id: "1461099412649545850", name: template(options.nameTemplate ?? "{title}"), type: Number(options.activityType ?? 0),
                 details: template(options.detailsTemplate ?? "{title}") || undefined,
                 state: template(options.stateTemplate ?? "{artist}") || undefined,
                 timestamps: options.showTime !== false && data.start && data.end ? { start: data.start, end: data.end } : undefined,
-                assets: options.coverSmall ? { large_image: image(logo), small_image: data.cover ? image(data.cover) : undefined, small_text: data.album } : { large_image: image(data.cover || logo), large_text: data.album, small_image: image(logo), small_text: "Spicetify" }
+                assets: options.coverSmall ? { large_image: await image(logo), small_image: data.cover ? await image(data.cover) : undefined, small_text: data.album } : { large_image: await image(data.cover || logo), large_text: data.album, small_image: await image(logo), small_text: "Spicetify" }
             };
             if (trackId && options.showButton !== false) {
                 activity.buttons = ["Play song"];
