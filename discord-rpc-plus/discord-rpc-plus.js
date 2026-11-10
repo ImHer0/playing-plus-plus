@@ -23,7 +23,7 @@
       input.onchange = () => { options[key] = input.type === "checkbox" ? input.checked : key === "activityType" ? Number(input.value) : input.value; Spicetify.LocalStorage.set("discord-rpc-options", JSON.stringify(options)); update(); };
       row.append(input); panel.append(row);
     };
-    const help = document.createElement("p"); help.textContent = "Templates: {title}, {artist}, {album}. Blank details hide that line. Discord controls the activity label; custom text belongs in the name template. Vencord uses these settings unless overrides are enabled."; panel.append(help);
+    const help = document.createElement("p"); help.textContent = "Templates: {title}, {artist}, {album}, {playlist}, {source}. Blank details hide that line. Discord controls the activity label; custom text belongs in the name template. Vencord uses these settings unless overrides are enabled."; panel.append(help);
     add("Activity label", "activityType", [["Playing",0],["Listening to",2],["Watching",3],["Competing in",5]]);
     add("Activity name", "nameTemplate"); add("Details", "detailsTemplate"); add("Second line", "stateTemplate");
     add("Show album artwork", "showCover");
@@ -52,17 +52,20 @@
   }).register();
   let contextUri = "", playlist = {}, contextVersion = 0;
   async function refreshPlaylist() {
-    const context = Spicetify.Player.data?.context;
-    const uri = context?.uri || context?.metadata?.uri || "";
+    const context = Spicetify.Player.data?.context || Spicetify.Player.data?.item?.context;
+    const uri = context?.uri || context?.metadata?.uri || Spicetify.Player.data?.context_uri || "";
     if (uri === contextUri) return;
     contextUri = uri; playlist = {};
     const version = ++contextVersion;
+    const metadata = context?.metadata || {};
+    const contextImage = metadata.image_url || metadata.image || context?.images?.[0]?.url;
+    playlist = { name: metadata.context_description || metadata.name || context?.name, image: contextImage?.startsWith("spotify:image:") ? `https://i.scdn.co/image/${contextImage.split(":").pop()}` : contextImage, uri };
     const id = /^spotify:playlist:([a-zA-Z0-9]{22})$/.exec(uri)?.[1];
     if (!id) return;
     try {
-      const data = await Spicetify.CosmosAsync.get(`https://api.spotify.com/v1/playlists/${id}?fields=name,images`);
+      const data = await Spicetify.CosmosAsync.get(`https://api.spotify.com/v1/playlists/${id}?fields=name,images,description`);
       if (version !== contextVersion) return;
-      playlist = { name: data.name, image: data.images?.[0]?.url }; update();
+      playlist = { ...playlist, name: data.name || playlist.name, image: data.images?.[0]?.url || playlist.image, description: data.description, uri }; update();
     } catch { /* No playlist artwork when Spotify restricts the lookup. */ }
   }
   function update() {
@@ -74,7 +77,7 @@
     const img = m.images?.[0]?.url || m.metadata?.image_xlarge_url || m.metadata?.image_url || "";
     const id = img.split(":").pop();
     post({
-      options, playlist,
+      options, playlist, source: "Spotify",
       title: m.name,
       trackUri: m.uri || m.metadata?.uri || m.metadata?.track_uri,
       artist: (m.artists || []).map((a) => a.name).join(", "),

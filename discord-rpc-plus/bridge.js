@@ -45,7 +45,7 @@ http.createServer((req, res) => {
       else {
         const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : undefined);
         const o = p.options || {};
-        const template = value => value.replace(/\{(title|artist|album)\}/g, (_, k) => str(p[k], 128) || "").slice(0,128);
+        const template = value => value.replace(/\{(title|artist|album|playlist|source)\}/g, (_, k) => str(k === "playlist" ? p.playlist?.name : p[k], 128) || "").slice(0,128);
         const a = { name: template(typeof o.nameTemplate === "string" ? o.nameTemplate : "{title}"), type: [0,2,3,5].includes(o.activityType) ? o.activityType : 2,
           details: template(typeof o.detailsTemplate === "string" ? o.detailsTemplate : "{title}") || undefined,
           state: template(typeof o.stateTemplate === "string" ? o.stateTemplate : "{artist}") || undefined };

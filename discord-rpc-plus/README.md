@@ -84,3 +84,11 @@ Optional: [Ko-fi](https://ko-fi.com/imher0), [PayPal](https://www.paypal.com/pay
 Select **Current playlist** to show the artwork of the Spotify playlist providing the playback context. Its name is the default hover text. Album, artist, radio, queue-only and other non-playlist contexts have no playlist image. If Spotify restricts playlist metadata, the image is omitted.
 
 Enable **Swap large and small images** to display the selected custom image/GIF or playlist artwork as the large image, and album artwork as the small image. Hover text follows each image. With no available selected image, the normal album artwork remains large. Disable Show album artwork to omit album art in either position. GIF animation depends on Discord support.
+
+## Windows media alternative (Vencord)
+
+The Vencord Source dropdown offers Spicetify, Windows media, or Spicetify with Windows fallback. Windows mode uses Windows system media sessions via built-in Windows PowerShell, with no Spotify extension or standalone Node installation required. It polls every ten seconds and shows title, artist, album and playback timing supplied by the current Windows media session. It clears paused playback. Only apps exposing Windows media controls are supported; Windows chooses the current session.
+
+Windows mode currently provides text and timing, not native thumbnail artwork or service-specific song URLs. Custom image/GIF options remain available. Spotify mode retains exact Spotify song links, album artwork and playlist-context metadata.
+
+Spicetify now sends playlist name, URI, description and artwork when available, using client playback context as a fallback to Spotify's API. Templates additionally support `{playlist}` and `{source}`. Playlist artwork still depends on metadata available in the installed Spotify version; missing images are omitted.
