@@ -8,7 +8,9 @@ const settings = definePluginSettings({
     nameTemplate: { type: OptionType.STRING, description: "Activity name: {title}, {artist}, {album}. Add any custom text here.", default: "{title}" },
     detailsTemplate: { type: OptionType.STRING, description: "Details template (blank hides it)", default: "{title}" },
     stateTemplate: { type: OptionType.STRING, description: "Second line template (blank hides it)", default: "{artist}" },
-    coverSmall: { type: OptionType.BOOLEAN, description: "Use album cover as small image", default: false },
+    smallImage: { type: OptionType.SELECT, description: "Small image", options: [{ label: "Spotify profile", value: "profile", default: true }, { label: "Custom image / GIF URL", value: "custom" }, { label: "None", value: "none" }] },
+    smallImageUrl: { type: OptionType.STRING, description: "Custom small image HTTPS URL", default: "" },
+    smallImageText: { type: OptionType.STRING, description: "Small image hover text (blank uses Spotify profile name)", default: "" },
     showCover: { type: OptionType.BOOLEAN, description: "Show album artwork", default: true },
     showTime: { type: OptionType.BOOLEAN, description: "Show playback time", default: true },
     showButton: { type: OptionType.BOOLEAN, description: "Show Play song button", default: true }
@@ -47,8 +49,13 @@ export default definePlugin({
                 details: template(options.detailsTemplate ?? "{title}") || undefined,
                 state: template(options.stateTemplate ?? "{artist}") || undefined,
                 timestamps: options.showTime !== false && data.start && data.end ? { start: data.start, end: data.end } : undefined,
-                assets: options.showCover !== false && data.cover ? (options.coverSmall ? { small_image: await image(data.cover), small_text: data.album } : { large_image: await image(data.cover), large_text: data.album }) : undefined
+                assets: options.showCover !== false && data.cover ? { large_image: await image(data.cover), large_text: data.album } : {}
             };
+            const smallUrl = options.smallImage === "none" ? undefined : options.smallImage === "custom" ? options.smallImageUrl : data.profile?.image;
+            if (typeof smallUrl === "string" && /^https:\/\//.test(smallUrl)) {
+                activity.assets.small_image = await image(smallUrl);
+                activity.assets.small_text = (options.smallImageText || data.profile?.name || "Spotify profile").slice(0, 128);
+            }
             if (trackId && options.showButton !== false) {
                 activity.buttons = ["Play song"];
                 activity.metadata = { button_urls: [`https://open.spotify.com/track/${trackId}`] };

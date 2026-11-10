@@ -6,7 +6,7 @@
   const URL = "http://127.0.0.1:6473/";
   const post = (body) => fetch(URL, { method: "POST", body: JSON.stringify(body) }).catch(() => {}); // bridge offline: ignore
 
-  const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, coverSmall: false, showTime: true, showButton: true };
+  const defaults = { activityType: 2, nameTemplate: "{title}", detailsTemplate: "{title}", stateTemplate: "{artist}", showCover: true, smallImage: "profile", smallImageUrl: "", smallImageText: "", showTime: true, showButton: true };
   let options;
   try { options = { ...defaults, ...JSON.parse(Spicetify.LocalStorage.get("discord-rpc-options") || "{}") }; } catch { options = { ...defaults }; }
   new Spicetify.Menu.Item("Discord RPC+ settings", false, () => {
@@ -25,9 +25,22 @@
     add("Activity label", "activityType", [["Playing",0],["Listening to",2],["Watching",3],["Competing in",5]]);
     add("Activity name", "nameTemplate"); add("Details", "detailsTemplate"); add("Second line", "stateTemplate");
     add("Show album artwork", "showCover");
-    add("Album cover as small image", "coverSmall"); add("Playback time", "showTime"); add("Play song button", "showButton");
+    add("Small image", "smallImage", [["Spotify profile", "profile"], ["Custom image / GIF", "custom"], ["None", "none"]]);
+    add("Custom image HTTPS URL", "smallImageUrl"); add("Small image hover text (blank = profile name)", "smallImageText"); add("Playback time", "showTime"); add("Play song button", "showButton");
     Spicetify.PopupModal.display({ title: "Discord RPC+ settings", content: panel });
   }).register();
+  let profile = {};
+  async function loadProfile() {
+    try {
+      const user = await Spicetify.CosmosAsync.get("https://api.spotify.com/v1/me");
+      profile = { name: user.display_name || user.id, image: user.images?.[0]?.url };
+      update();
+    } catch { // The profile menu can supply the avatar when Web API access is unavailable.
+      const avatar = document.querySelector('[data-testid="user-widget-avatar"] img, img[data-testid="user-widget-avatar"]');
+      profile = { name: avatar?.alt || "Spotify profile", image: avatar?.src };
+    }
+  }
+  loadProfile();
   function update() {
     const d = Spicetify.Player.data;
     const m = d?.item;
@@ -36,7 +49,7 @@
     const img = m.images?.[0]?.url || m.metadata?.image_xlarge_url || m.metadata?.image_url || "";
     const id = img.split(":").pop();
     post({
-      options,
+      options, profile,
       title: m.name,
       trackUri: m.uri || m.metadata?.uri || m.metadata?.track_uri,
       artist: (m.artists || []).map((a) => a.name).join(", "),

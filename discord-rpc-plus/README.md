@@ -36,3 +36,13 @@ Open **Discord RPC+ settings** from Spotify's profile menu. Templates support `{
 Vencord: open Settings > Vencord > Plugins > SpicetifyRPC settings. Disable **Use customization from Spicetify** to use Vencord overrides. Otherwise the Spotify settings apply to both the Vencord receiver and standalone bridge.
 
 The Play song button opens the current track on Spotify. Final button visibility and artwork need live profile validation from another account.
+
+### Small image options
+
+The large image remains the album cover when **Show album artwork** is enabled. The independent **Small image** dropdown offers:
+
+- **Spotify profile** (default): your Spotify avatar, with your display name on hover. If the profile has no avatar or Spotify cannot provide it, the small image is omitted.
+- **Custom image / GIF URL**: a publicly accessible direct HTTPS image URL. Discord resolves and caches it; GIF animation depends on Discord support and may display as a still image.
+- **None**: no small image.
+
+**Small image hover text** overrides the default profile name. Leave it blank to use your Spotify display name. These options exist in both Spotify and Vencord. In Vencord, enable Use customization from Spicetify to share the Spotify settings, or disable it for independent overrides. The old small album-art option is retired.

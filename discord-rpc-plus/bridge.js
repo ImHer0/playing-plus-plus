@@ -51,7 +51,9 @@ http.createServer((req, res) => {
           state: template(typeof o.stateTemplate === "string" ? o.stateTemplate : "{artist}") || undefined };
         if (o.showTime !== false && p.start && p.end) a.timestamps = { start: Math.floor(+p.start), end: Math.floor(+p.end) };
         const cover = typeof p.cover === "string" && p.cover.startsWith("https://i.scdn.co/") ? p.cover : undefined;
-        if (o.showCover !== false && cover) a.assets = o.coverSmall ? { small_image: cover, small_text: str(p.album,128) } : { large_image: cover, large_text: str(p.album,128) };
+        a.assets = o.showCover !== false && cover ? { large_image: cover, large_text: str(p.album,128) } : {};
+        const smallUrl = o.smallImage === "none" ? undefined : o.smallImage === "custom" ? o.smallImageUrl : p.profile?.image;
+        if (typeof smallUrl === "string" && /^https:\/\//.test(smallUrl)) { a.assets.small_image = smallUrl; a.assets.small_text = str(o.smallImageText || p.profile?.name || "Spotify profile", 128); }
         const trackId = /^spotify:track:([a-zA-Z0-9]{22})$/.exec(p.trackUri || "")?.[1];
         if (trackId && o.showButton !== false) a.buttons = [{ label: "Play song", url: `https://open.spotify.com/track/${trackId}` }];
         send(a);
