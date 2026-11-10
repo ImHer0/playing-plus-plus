@@ -1,8 +1,14 @@
 # Spicetify Extensions
 
-![Playing++ logo](assets/logo.png)
+Two independent extensions by me!
 
-Two independent extensions by ImHer0.
+<a href="PLAYING.md">
+  <img src="assets/preview.gif" alt="Playing++ preview across 20 songs" width="420">
+</a>
+
+<a href="discord-rpc-plus/README.md">
+  <img src="assets/discord-rpc-logo.png" alt="SpicetifyRPC" width="420">
+</a>
 
 | Extension | Features | Setup |
 | --- | --- | --- |
